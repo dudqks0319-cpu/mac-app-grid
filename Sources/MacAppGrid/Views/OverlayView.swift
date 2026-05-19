@@ -21,23 +21,23 @@ struct OverlayView: View {
 
     private var columnsPerRow: Int {
         let width = NSScreen.main?.visibleFrame.width ?? NSScreen.main?.frame.width ?? 1200
-        let horizontalPadding: CGFloat = 80
+        let horizontalPadding: CGFloat = 96
         let cellWidth = settings.config.iconSize.cellWidth
-        let spacing: CGFloat = 18
+        let spacing = gridSpacing
         let usableWidth = max(cellWidth, width - horizontalPadding)
         return max(1, Int((usableWidth + spacing) / (cellWidth + spacing)))
     }
 
     private var rowsPerPage: Int {
-        let height = NSScreen.main?.visibleFrame.height ?? NSScreen.main?.frame.height ?? 900
-        let reservedHeight: CGFloat = 230
-        let rowHeight = settings.config.iconSize.cellHeight + 22
+        let height = NSScreen.main?.frame.height ?? NSScreen.main?.visibleFrame.height ?? 900
+        let reservedHeight: CGFloat = 190
+        let rowHeight = settings.config.iconSize.cellHeight + gridSpacing
         let usableHeight = max(rowHeight, height - reservedHeight)
         return max(3, Int(usableHeight / rowHeight))
     }
 
     private var gridSpacing: CGFloat {
-        18
+        22
     }
 
     private var pageSize: Int {
@@ -90,7 +90,7 @@ struct OverlayView: View {
     }
 
     private var filteredApps: [AppItem] {
-        let ordered = layout.orderedApps(from: appsForCurrentMode)
+        let ordered = orderedAppsForCurrentSort(appsForCurrentMode)
         return ordered.filter { AppVisibilityPolicy.matchesSearch($0, searchText: searchText) }
     }
 
@@ -149,6 +149,10 @@ struct OverlayView: View {
             focusedAppIndex = 0
             pageIndex = 0
         }
+        .onChange(of: settings.config.appSortMode) {
+            focusedAppIndex = 0
+            pageIndex = 0
+        }
         .onChange(of: filteredApps) {
             guard !filteredApps.isEmpty else {
                 focusedAppIndex = 0
@@ -173,7 +177,8 @@ struct OverlayView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .overlayPageDelta)) { note in
             guard let delta = note.object as? Int else { return }
-            pageIndex = max(0, pageIndex + delta)
+            let maxPageIndex = filteredApps.isEmpty ? 0 : max(0, (filteredApps.count - 1) / pageSize)
+            pageIndex = min(maxPageIndex, max(0, pageIndex + delta))
         }
         .onReceive(NotificationCenter.default.publisher(for: .overlayScrollTarget)) { note in
             guard let target = note.object as? String else { return }
@@ -276,6 +281,17 @@ struct OverlayView: View {
                 .frame(maxWidth: 520)
                 .focused($searchFocused)
             Spacer()
+            Picker("정렬", selection: Binding(
+                get: { settings.config.appSortMode },
+                set: { settings.config.appSortMode = $0 }
+            )) {
+                ForEach(AppSortMode.allCases) { mode in
+                    Text(mode.title).tag(mode)
+                }
+            }
+            .labelsHidden()
+            .frame(width: 132)
+            .controlSize(.small)
             Button("새 폴더") {
                 pendingAppIDForFolder = nil
                 newFolderName = ""
@@ -295,7 +311,7 @@ struct OverlayView: View {
             ScrollView {
                 launcherSections
                     .padding(.horizontal, 40)
-                    .padding(.bottom, 40)
+                    .padding(.bottom, 14)
             }
             .onChange(of: scrollTarget) { _, target in
                 guard let target else { return }
@@ -343,7 +359,9 @@ struct OverlayView: View {
                 pageSize: pageSize,
                 gridSpacing: gridSpacing,
                 moveApp: { appID, targetID in
-                    layout.move(appID: appID, to: targetID)
+                    if settings.config.appSortMode == .customLayout {
+                        layout.move(appID: appID, to: targetID)
+                    }
                 },
                 createFolder: { draggedAppID, targetAppID in
                     createFolderFromDrop(draggedAppID: draggedAppID, targetAppID: targetAppID)
@@ -393,6 +411,28 @@ struct OverlayView: View {
     private func openFocusedApp() {
         guard let app = focusedApp else { return }
         launch(app: app)
+    }
+
+    private func orderedAppsForCurrentSort(_ apps: [AppItem]) -> [AppItem] {
+        switch settings.config.appSortMode {
+        case .customLayout:
+            return layout.orderedApps(from: apps)
+        case .original:
+            return apps
+        case .nameAscending:
+            return apps.sorted {
+                $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+            }
+        case .recentlyOpened:
+            return apps.sorted {
+                let left = usage.lastLaunch[$0.bundleID] ?? 0
+                let right = usage.lastLaunch[$1.bundleID] ?? 0
+                if left == right {
+                    return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+                }
+                return left > right
+            }
+        }
     }
 
     private func createFolderFromDrop(draggedAppID: String, targetAppID: String) {

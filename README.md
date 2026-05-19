@@ -12,12 +12,14 @@ Current status: beta candidate for local testing, not yet notarized for public r
 - Launches apps through `NSWorkspace`.
 - Opens from a menu bar icon, configurable global hotkey, and Launchpad-style `Command + L` shortcut.
 - Uses larger default grid cells so the launcher fills the display more like Launchpad.
+- Supports trackpad gestures: pinch in opens the launcher best-effort, spread closes it, and two-finger horizontal movement changes pages.
 - Supports basic folders and app ordering.
 - Includes a Settings window for launch behavior, icon size, hidden apps, refresh, and layout reset.
 - Supports login item toggling through `SMAppService`.
 - Stores settings, layout, folders, usage, and app cache JSON under Application Support.
 - Supports Launchpad-style folder mode: apps inside folders can be hidden from the main grid while remaining searchable.
 - Supports app-to-app drag folder creation when that setting is enabled.
+- Supports launcher sort modes for saved custom layout, original app order, alphabetical order, and recently opened order.
 - Tracks recent and frequent apps after successful launches.
 
 ## What Is Not Finished

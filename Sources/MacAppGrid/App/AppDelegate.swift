@@ -11,6 +11,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var launchpadStyleHotKeyManager: HotKeyManager?
     private var keyMonitor: Any?
     private var globalKeyMonitor: Any?
+    private var globalGestureMonitor: Any?
+    private var localGestureMonitor: Any?
+    private var lastGlobalGestureAt: TimeInterval = 0
     private let settings = SettingsStore.shared
     private var registeredHotKey = SettingsStore.shared.config.hotKey
 
@@ -28,6 +31,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         if let globalKeyMonitor {
             NSEvent.removeMonitor(globalKeyMonitor)
+        }
+        if let globalGestureMonitor {
+            NSEvent.removeMonitor(globalGestureMonitor)
+        }
+        if let localGestureMonitor {
+            NSEvent.removeMonitor(localGestureMonitor)
         }
         hotKeyManager?.tearDown()
         launchpadStyleHotKeyManager?.tearDown()
@@ -70,9 +79,47 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         globalKeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard event.keyCode == kVK_Escape else { return }
             Task { @MainActor in
-                guard self?.overlayController?.isVisible == true else { return }
+                guard self?.overlayController?.isActuallyVisible == true else { return }
                 self?.hideOverlay()
             }
+        }
+
+        localGestureMonitor = NSEvent.addLocalMonitorForEvents(matching: [.magnify, .swipe]) { [weak self] event in
+            self?.handleGlobalGesture(event)
+            return event
+        }
+
+        globalGestureMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.magnify, .swipe]) { [weak self] event in
+            Task { @MainActor in
+                self?.handleGlobalGesture(event)
+            }
+        }
+    }
+
+    private func handleGlobalGesture(_ event: NSEvent) {
+        let now = ProcessInfo.processInfo.systemUptime
+        guard now - lastGlobalGestureAt > 0.55 else { return }
+
+        switch event.type {
+        case .magnify:
+            if event.magnification < -0.35, overlayController?.isActuallyVisible != true {
+                lastGlobalGestureAt = now
+                showOverlay()
+            } else if event.magnification > 0.35, overlayController?.isActuallyVisible == true {
+                lastGlobalGestureAt = now
+                hideOverlay()
+            }
+        case .swipe:
+            guard overlayController?.isActuallyVisible == true else { return }
+            if event.deltaX < -0.5 {
+                lastGlobalGestureAt = now
+                NotificationCenter.default.post(name: .overlayPageDelta, object: 1)
+            } else if event.deltaX > 0.5 {
+                lastGlobalGestureAt = now
+                NotificationCenter.default.post(name: .overlayPageDelta, object: -1)
+            }
+        default:
+            break
         }
     }
 
@@ -151,7 +198,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func toggleOverlay() {
         guard let controller = overlayController else { return }
-        if controller.isVisible {
+        if controller.isActuallyVisible {
             hideOverlay()
         } else {
             showOverlay()

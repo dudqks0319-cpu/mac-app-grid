@@ -144,6 +144,11 @@ struct SettingsView: View {
 
             Toggle("최근 앱 표시", isOn: binding(\.showRecentApps))
             Toggle("자주 쓰는 앱 표시", isOn: binding(\.showFrequentApps))
+            Picker("앱 정렬 기준", selection: binding(\.appSortMode)) {
+                ForEach(AppSortMode.allCases) { mode in
+                    Text(mode.title).tag(mode)
+                }
+            }
             Toggle("폴더에 포함된 앱을 전체 앱에서 숨기기", isOn: binding(\.hideFolderAppsInGrid))
             Toggle("앱을 앱 위로 드롭하면 폴더 생성", isOn: binding(\.dragAppOntoAppCreatesFolder))
         }

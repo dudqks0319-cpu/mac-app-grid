@@ -33,9 +33,17 @@ final class StoreTests: XCTestCase {
         XCTAssertFalse(decoded.closeAfterLaunchingApp)
         XCTAssertEqual(decoded.hotKey.displayName, "Option + Space")
         XCTAssertEqual(decoded.iconSize, .large)
+        XCTAssertEqual(decoded.appSortMode, .customLayout)
         XCTAssertTrue(decoded.hideFolderAppsInGrid)
         XCTAssertTrue(decoded.dragAppOntoAppCreatesFolder)
         XCTAssertEqual(decoded.hiddenAppIDs, ["com.example.hidden"])
+    }
+
+    func testAppSortModeTitles() {
+        XCTAssertEqual(AppSortMode.customLayout.title, "사용자 배치")
+        XCTAssertEqual(AppSortMode.original.title, "기존 앱 순서")
+        XCTAssertEqual(AppSortMode.nameAscending.title, "이름순")
+        XCTAssertEqual(AppSortMode.recentlyOpened.title, "최근 실행순")
     }
 
     func testLaunchpadStyleHotKeyUsesCommandL() {

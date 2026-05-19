@@ -83,9 +83,11 @@ struct PagedAppGrid: View {
                             .disabled(pageIndex >= pages.count - 1)
                         }
                         .buttonStyle(.bordered)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.top, 6)
                     }
                 }
-                .frame(minHeight: 420)
+                .frame(minHeight: 360)
             }
         }
         .onChange(of: pages.count) { _, newCount in
@@ -97,6 +99,7 @@ struct PagedAppGrid: View {
                 pageIndex = max(0, newCount - 1)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var columns: [GridItem] {

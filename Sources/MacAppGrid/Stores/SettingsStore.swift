@@ -21,28 +21,46 @@ enum AppIconSize: String, Codable, CaseIterable, Identifiable {
 
     var iconDimension: CGFloat {
         switch self {
-        case .small: return 54
-        case .medium: return 66
-        case .large: return 82
-        case .extraLarge: return 96
+        case .small: return 58
+        case .medium: return 72
+        case .large: return 90
+        case .extraLarge: return 106
         }
     }
 
     var cellWidth: CGFloat {
         switch self {
-        case .small: return 82
-        case .medium: return 98
-        case .large: return 120
-        case .extraLarge: return 140
+        case .small: return 88
+        case .medium: return 108
+        case .large: return 128
+        case .extraLarge: return 150
         }
     }
 
     var cellHeight: CGFloat {
         switch self {
-        case .small: return 96
-        case .medium: return 114
-        case .large: return 136
-        case .extraLarge: return 156
+        case .small: return 106
+        case .medium: return 126
+        case .large: return 150
+        case .extraLarge: return 172
+        }
+    }
+}
+
+enum AppSortMode: String, Codable, CaseIterable, Identifiable {
+    case customLayout
+    case original
+    case nameAscending
+    case recentlyOpened
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .customLayout: return "사용자 배치"
+        case .original: return "기존 앱 순서"
+        case .nameAscending: return "이름순"
+        case .recentlyOpened: return "최근 실행순"
         }
     }
 }
@@ -54,6 +72,7 @@ struct SettingsConfig: Codable, Equatable {
     var iconSize: AppIconSize = .large
     var showRecentApps: Bool = true
     var showFrequentApps: Bool = true
+    var appSortMode: AppSortMode = .customLayout
     var hideFolderAppsInGrid: Bool = true
     var dragAppOntoAppCreatesFolder: Bool = true
     var hotKey: HotKeyConfig = .default
@@ -69,6 +88,7 @@ struct SettingsConfig: Codable, Equatable {
         iconSize = try container.decodeIfPresent(AppIconSize.self, forKey: .iconSize) ?? .large
         showRecentApps = try container.decodeIfPresent(Bool.self, forKey: .showRecentApps) ?? true
         showFrequentApps = try container.decodeIfPresent(Bool.self, forKey: .showFrequentApps) ?? true
+        appSortMode = try container.decodeIfPresent(AppSortMode.self, forKey: .appSortMode) ?? .customLayout
         hideFolderAppsInGrid = try container.decodeIfPresent(Bool.self, forKey: .hideFolderAppsInGrid) ?? true
         dragAppOntoAppCreatesFolder = try container.decodeIfPresent(Bool.self, forKey: .dragAppOntoAppCreatesFolder) ?? true
         hotKey = try container.decodeIfPresent(HotKeyConfig.self, forKey: .hotKey) ?? .default

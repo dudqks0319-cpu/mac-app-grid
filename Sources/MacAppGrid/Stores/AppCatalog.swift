@@ -53,7 +53,8 @@ final class AppCatalog: ObservableObject {
             "\(NSHomeDirectory())/Applications"
         ]
 
-        var found: [String: CachedAppRecord] = [:]
+        var foundIDs: Set<String> = []
+        var records: [CachedAppRecord] = []
         let fileManager = FileManager.default
 
         for path in searchPaths {
@@ -65,14 +66,15 @@ final class AppCatalog: ObservableObject {
             for case let fileURL as URL in enumerator {
                 if fileURL.pathExtension == "app" {
                     enumerator.skipDescendants()
-                    if let item = appRecord(from: fileURL) {
-                        found[item.bundleID] = item
+                    if let item = appRecord(from: fileURL), !foundIDs.contains(item.bundleID) {
+                        foundIDs.insert(item.bundleID)
+                        records.append(item)
                     }
                 }
             }
         }
 
-        return found.values.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        return records
     }
 
     nonisolated private static func appRecord(from url: URL) -> CachedAppRecord? {
