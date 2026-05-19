@@ -5,6 +5,7 @@ struct AppIconCell: View {
     var menuStyle: AppMenuStyle = .addToFolder
     var isSelected: Bool = false
     @EnvironmentObject private var folders: FolderStore
+    @EnvironmentObject private var settings: SettingsStore
 
     var body: some View {
         let button = Button {
@@ -14,15 +15,15 @@ struct AppIconCell: View {
                 Image(nsImage: app.icon)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
-                    .frame(width: 56, height: 56)
+                    .frame(width: settings.config.iconSize.iconDimension, height: settings.config.iconSize.iconDimension)
                 Text(app.name)
                     .font(.caption)
                     .foregroundColor(.primary)
                     .lineLimit(2)
                     .multilineTextAlignment(.center)
-                    .frame(width: 72)
+                    .frame(width: settings.config.iconSize.cellWidth)
             }
-            .frame(width: 76, height: 88)
+            .frame(width: settings.config.iconSize.cellWidth, height: settings.config.iconSize.cellHeight)
             .overlay(
                 RoundedRectangle(cornerRadius: 14)
                     .stroke(isSelected ? Color.white.opacity(0.85) : .clear, lineWidth: isSelected ? 3 : 0)
@@ -47,6 +48,10 @@ struct AppIconCell: View {
                     }
                     Button("새 폴더에 추가…") {
                         NotificationCenter.default.post(name: .folderCreateRequest, object: app.bundleID)
+                    }
+                    Divider()
+                    Button("숨기기") {
+                        settings.hideApp(app.bundleID)
                     }
                 case .removeFromFolder(let onRemove):
                     Button("폴더에서 제거") {

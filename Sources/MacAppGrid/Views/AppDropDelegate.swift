@@ -3,11 +3,11 @@ import SwiftUI
 struct AppDropDelegate: DropDelegate {
     let targetID: String?
     @Binding var draggingID: String?
-    @EnvironmentObject private var layout: LayoutStore
+    let moveApp: (String, String?) -> Void
 
     func dropEntered(info: DropInfo) {
         guard let draggingID, draggingID != targetID else { return }
-        layout.move(appID: draggingID, to: targetID)
+        moveApp(draggingID, targetID)
     }
 
     func performDrop(info: DropInfo) -> Bool {

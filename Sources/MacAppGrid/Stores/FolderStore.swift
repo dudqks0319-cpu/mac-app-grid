@@ -6,6 +6,7 @@ final class FolderStore: ObservableObject {
     @Published private(set) var folders: [Folder] = []
 
     private let foldersKey = "MacAppGrid.folders"
+    private let fileURL = AppPaths.jsonFile(named: "folders.json")
 
     init() {
         load()
@@ -36,6 +37,20 @@ final class FolderStore: ObservableObject {
         save()
     }
 
+    func moveApp(appID: String, to targetAppID: String?, in folderID: String) {
+        guard let folderIndex = folders.firstIndex(where: { $0.id == folderID }),
+              let fromIndex = folders[folderIndex].appIDs.firstIndex(of: appID) else { return }
+        var appIDs = folders[folderIndex].appIDs
+        appIDs.remove(at: fromIndex)
+        if let targetAppID, let targetIndex = appIDs.firstIndex(of: targetAppID) {
+            appIDs.insert(appID, at: targetIndex)
+        } else {
+            appIDs.append(appID)
+        }
+        folders[folderIndex].appIDs = appIDs
+        save()
+    }
+
     func deleteFolder(folderID: String) {
         folders.removeAll { $0.id == folderID }
         save()
@@ -50,16 +65,18 @@ final class FolderStore: ObservableObject {
     }
 
     private func load() {
-        guard let data = UserDefaults.standard.data(forKey: foldersKey) else { return }
-        let decoder = JSONDecoder()
-        if let decoded = try? decoder.decode([Folder].self, from: data) {
+        if let decoded = JSONFileStore.load([Folder].self, from: fileURL) {
             folders = decoded
+            return
         }
+        guard let data = UserDefaults.standard.data(forKey: foldersKey),
+              let decoded = try? JSONDecoder().decode([Folder].self, from: data) else {
+            return
+        }
+        folders = decoded
     }
 
     private func save() {
-        let encoder = JSONEncoder()
-        guard let data = try? encoder.encode(folders) else { return }
-        UserDefaults.standard.set(data, forKey: foldersKey)
+        JSONFileStore.save(folders, to: fileURL)
     }
 }

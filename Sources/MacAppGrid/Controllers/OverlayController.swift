@@ -11,6 +11,7 @@ final class OverlayController: ObservableObject {
     private let usageStore = UsageStore.shared
     private let folderStore = FolderStore()
     private let layoutStore = LayoutStore()
+    private let settingsStore = SettingsStore.shared
 
     init() {
         let view = AnyView(
@@ -19,6 +20,7 @@ final class OverlayController: ObservableObject {
                 .environmentObject(usageStore)
                 .environmentObject(folderStore)
                 .environmentObject(layoutStore)
+                .environmentObject(settingsStore)
         )
         contentController = NSHostingController(rootView: view)
 

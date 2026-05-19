@@ -25,7 +25,9 @@ func launch(app: AppItem) {
             }
 
             UsageStore.shared.recordLaunch(bundleID: app.bundleID)
-            NotificationCenter.default.post(name: .overlayHide, object: nil)
+            if SettingsStore.shared.config.closeAfterLaunchingApp {
+                NotificationCenter.default.post(name: .overlayHide, object: nil)
+            }
         }
     }
 }

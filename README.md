@@ -2,7 +2,7 @@
 
 MacAppGrid is an alpha-stage standalone macOS app grid launcher. It is intended to provide a safe Launchpad-style workflow without modifying Apple Launchpad internals, requiring SIP changes, or using private APIs.
 
-Current status: alpha prototype, not ready for public release.
+Current status: MVP candidate for local testing, not yet notarized for public release.
 
 ## What Works
 
@@ -12,17 +12,17 @@ Current status: alpha prototype, not ready for public release.
 - Launches apps through `NSWorkspace`.
 - Opens from a menu bar icon and global hotkey.
 - Supports basic folders and app ordering.
+- Includes a Settings window for launch behavior, icon size, hidden apps, refresh, and layout reset.
+- Supports login item toggling through `SMAppService`.
+- Stores settings, layout, folders, usage, and app cache JSON under Application Support.
 - Tracks recent and frequent apps after successful launches.
 
 ## What Is Not Finished
 
-- Settings UI.
-- Login item support.
-- Hidden app management.
-- Application Support JSON persistence.
-- App and icon caching.
-- Launchpad-style drag-to-folder UX.
-- Release signing, notarization, and DMG packaging.
+- Custom hotkey recording UI.
+- Full Launchpad-style drag-app-onto-app folder creation.
+- Apple Developer ID certificate-backed signing and notarization in this checkout.
+- GitHub Release upload automation.
 
 ## Build
 
@@ -44,6 +44,29 @@ Default run:
 ./script/build_and_run.sh
 ```
 
+## Release Package
+
+The release script builds a Release app bundle and creates a DMG under `release/`.
+Signing and notarization run only when the required local Apple credentials are configured.
+
+```bash
+./script/release_build.sh
+```
+
+Optional signed/notarized build:
+
+```bash
+DEVELOPER_ID_APPLICATION="Developer ID Application: Your Name (TEAMID)" \
+NOTARYTOOL_PROFILE="your-notarytool-profile" \
+./script/release_build.sh
+```
+
+Runtime data is stored here:
+
+```txt
+~/Library/Application Support/MacAppGrid/
+```
+
 ## Requirements
 
 - macOS 14 or later
@@ -57,4 +80,3 @@ Default run:
 - No administrator privileges.
 - No Apple Launchpad database modification.
 - No network transmission of app inventory data.
-

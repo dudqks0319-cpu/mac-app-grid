@@ -6,6 +6,7 @@ final class LayoutStore: ObservableObject {
     @Published private(set) var orderedIDs: [String] = []
 
     private let orderKey = "MacAppGrid.layoutOrder"
+    private let fileURL = AppPaths.jsonFile(named: "layout.json")
 
     init() {
         load()
@@ -45,12 +46,27 @@ final class LayoutStore: ObservableObject {
         save()
     }
 
+    func reset(with apps: [AppItem]) {
+        orderedIDs = apps.map { $0.bundleID }
+        save()
+    }
+
     private func load() {
-        guard let array = UserDefaults.standard.array(forKey: orderKey) as? [String] else { return }
-        orderedIDs = array
+        if let payload = JSONFileStore.load(LayoutPayload.self, from: fileURL) {
+            orderedIDs = payload.orderedIDs
+            return
+        }
+        if let array = UserDefaults.standard.array(forKey: orderKey) as? [String] {
+            orderedIDs = array
+        }
     }
 
     private func save() {
-        UserDefaults.standard.set(orderedIDs, forKey: orderKey)
+        JSONFileStore.save(LayoutPayload(version: 1, orderedIDs: orderedIDs), to: fileURL)
     }
+}
+
+private struct LayoutPayload: Codable {
+    var version: Int
+    var orderedIDs: [String]
 }

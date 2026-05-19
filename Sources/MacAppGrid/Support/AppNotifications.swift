@@ -9,4 +9,7 @@ extension Notification.Name {
     static let overlaySelectionActivate = Notification.Name("MacAppGrid.overlaySelectionActivate")
     static let overlaySelectionReset = Notification.Name("MacAppGrid.overlaySelectionReset")
     static let appLaunchFailed = Notification.Name("MacAppGrid.appLaunchFailed")
+    static let appRefreshRequested = Notification.Name("MacAppGrid.appRefreshRequested")
+    static let layoutResetRequested = Notification.Name("MacAppGrid.layoutResetRequested")
+    static let settingsChanged = Notification.Name("MacAppGrid.settingsChanged")
 }

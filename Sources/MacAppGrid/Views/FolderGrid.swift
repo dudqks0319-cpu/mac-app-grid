@@ -4,7 +4,9 @@ struct FolderGrid: View {
     let title: String?
     let folders: [Folder]
     let apps: [AppItem]
+    @Binding var draggingAppID: String?
     let onSelect: (String) -> Void
+    let onDropApp: (String, String) -> Void
 
     private let columns = [
         GridItem(.adaptive(minimum: 96), spacing: 16)
@@ -21,6 +23,12 @@ struct FolderGrid: View {
                     FolderCell(folder: folder, apps: apps)
                         .onTapGesture {
                             onSelect(folder.id)
+                        }
+                        .onDrop(of: [.text], isTargeted: nil) { _ in
+                            guard let draggingAppID else { return false }
+                            onDropApp(draggingAppID, folder.id)
+                            self.draggingAppID = nil
+                            return true
                         }
                 }
             }

@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var overlayController: OverlayController?
     private var hotKeyManager: HotKeyManager?
     private var keyMonitor: Any?
+    private let settings = SettingsStore.shared
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -35,9 +36,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let menu = NSMenu()
         menu.addItem(NSMenuItem(title: "열기", action: #selector(toggleOverlay), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "설정…", action: #selector(openSettings), keyEquivalent: ","))
         menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: "종료", action: #selector(quitApp), keyEquivalent: "q"))
         statusItem.menu = menu
+        updateStatusItemVisibility()
     }
 
     private func setupOverlay() {
@@ -74,10 +77,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             name: .overlayHide,
             object: nil
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleSettingsChanged),
+            name: .settingsChanged,
+            object: nil
+        )
     }
 
     @objc private func handleOverlayHide() {
         hideOverlay()
+    }
+
+    @objc private func handleSettingsChanged() {
+        updateStatusItemVisibility()
     }
 
     @objc private func toggleOverlay() {
@@ -102,5 +115,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func quitApp() {
         NSApp.terminate(nil)
+    }
+
+    @objc private func openSettings() {
+        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func updateStatusItemVisibility() {
+        guard let statusItem else { return }
+        statusItem.isVisible = settings.config.showMenuBarIcon
     }
 }

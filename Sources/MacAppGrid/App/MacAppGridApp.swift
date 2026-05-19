@@ -6,7 +6,8 @@ struct MacAppGridApp: App {
 
     var body: some Scene {
         Settings {
-            EmptyView()
+            SettingsView()
+                .environmentObject(SettingsStore.shared)
         }
     }
 }

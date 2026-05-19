@@ -6,6 +6,7 @@ struct OverlayView: View {
     @EnvironmentObject private var usage: UsageStore
     @EnvironmentObject private var folders: FolderStore
     @EnvironmentObject private var layout: LayoutStore
+    @EnvironmentObject private var settings: SettingsStore
     @State private var searchText: String = ""
     @FocusState private var searchFocused: Bool
     @State private var showingNewFolder = false
@@ -35,88 +36,44 @@ struct OverlayView: View {
         return filteredApps[focusedAppIndex]
     }
 
+    private var visibleApps: [AppItem] {
+        catalog.apps.filter { !settings.isHidden($0.bundleID) }
+    }
+
     private var filteredApps: [AppItem] {
-        let ordered = layout.orderedApps(from: catalog.apps)
-        if searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        let ordered = layout.orderedApps(from: visibleApps)
+        let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
             return ordered
         }
-        return ordered.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+        return ordered.filter {
+            $0.name.localizedCaseInsensitiveContains(trimmed)
+                || $0.bundleID.localizedCaseInsensitiveContains(trimmed)
+        }
     }
 
     var body: some View {
+        overlaySheets(overlayAlert(overlayEvents(rootView)))
+    }
+
+    private var rootView: some View {
         ZStack {
-            VisualEffectBlur(material: .sidebar, blendingMode: .behindWindow)
-                .ignoresSafeArea()
-                .overlay(
-                    Color.clear
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            NotificationCenter.default.post(name: .overlayHide, object: nil)
-                        }
-                )
+            backgroundView
 
             VStack(spacing: 20) {
-                HStack {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundColor(.secondary)
-                    TextField("앱 검색", text: $searchText)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(maxWidth: 520)
-                        .focused($searchFocused)
-                    Spacer()
-                    Button("새 폴더") {
-                        pendingAppIDForFolder = nil
-                        newFolderName = ""
-                        showingNewFolder = true
-                    }
-                }
-                .padding(.top, 36)
-
-                ScrollViewReader { proxy in
-                    ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                            Color.clear
-                                .frame(height: 1)
-                                .id("top")
-
-                            if !folders.folders.isEmpty {
-                                FolderGrid(
-                                    title: "폴더",
-                                    folders: folders.folders,
-                                    apps: catalog.apps,
-                                    onSelect: { folderID in
-                                        selectedFolderID = folderID
-                                    }
-                                )
-                            }
-                            AppSection(title: "최근 앱", apps: usage.recentApps(from: catalog.apps))
-                            AppSection(title: "자주 쓰는 앱", apps: usage.frequentApps(from: catalog.apps))
-                            PagedAppGrid(
-                                title: "전체 앱",
-                                apps: filteredApps,
-                                selectedAppID: focusedApp?.bundleID,
-                                draggingAppID: $draggingAppID,
-                                pageIndex: $pageIndex,
-                                columnsPerPage: max(1, columnsPerRow),
-                                pageSize: pageSize
-                            )
-                            .id("apps")
-                        }
-                        .padding(.horizontal, 40)
-                        .padding(.bottom, 40)
-                    }
-                    .onChange(of: scrollTarget) { _, target in
-                        guard let target else { return }
-                        withAnimation(.easeInOut(duration: 0.25)) {
-                            proxy.scrollTo(target, anchor: .top)
-                        }
-                        scrollTarget = nil
-                    }
-                }
+                searchBar
+                    .padding(.top, 36)
+                launcherContent
             }
         }
+    }
+
+    private func overlayEvents<Content: View>(_ content: Content) -> some View {
+        content
         .onAppear {
-            catalog.reloadApps()
+            if catalog.apps.isEmpty {
+                catalog.reloadApps()
+            }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 searchFocused = true
             }
@@ -126,6 +83,9 @@ struct OverlayView: View {
             focusedAppIndex = 0
             pageIndex = 0
             searchFocused = true
+            if catalog.apps.isEmpty {
+                catalog.reloadApps()
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: .overlaySelectionMove)) { note in
             guard let direction = note.object as? String else { return }
@@ -136,6 +96,12 @@ struct OverlayView: View {
         }
         .onReceive(catalog.$apps) { apps in
             layout.sync(with: apps)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .appRefreshRequested)) { _ in
+            catalog.reloadApps()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .layoutResetRequested)) { _ in
+            layout.reset(with: visibleApps)
         }
         .onChange(of: searchText) {
             focusedAppIndex = 0
@@ -174,6 +140,10 @@ struct OverlayView: View {
         .onReceive(NotificationCenter.default.publisher(for: .appLaunchFailed)) { note in
             launchErrorMessage = note.object as? String ?? "앱을 실행할 수 없습니다."
         }
+    }
+
+    private func overlayAlert<Content: View>(_ content: Content) -> some View {
+        content
         .alert(
             "앱 실행 실패",
             isPresented: Binding(
@@ -191,6 +161,10 @@ struct OverlayView: View {
         } message: {
             Text(launchErrorMessage ?? "")
         }
+    }
+
+    private func overlaySheets<Content: View>(_ content: Content) -> some View {
+        content
         .sheet(isPresented: $showingNewFolder) {
             NewFolderSheet(
                 name: $newFolderName,
@@ -215,9 +189,15 @@ struct OverlayView: View {
             if let folder = folders.folders.first(where: { $0.id == selection.id }) {
                 FolderDetailView(
                     folder: folder,
-                    apps: catalog.apps,
+                    apps: visibleApps,
+                    onRename: { name in
+                        folders.renameFolder(folderID: folder.id, newName: name)
+                    },
                     onRemove: { appID in
                         folders.removeApp(appID: appID, from: folder.id)
+                    },
+                    onMoveApp: { appID, targetID in
+                        folders.moveApp(appID: appID, to: targetID, in: folder.id)
                     },
                     onDeleteFolder: {
                         folders.deleteFolder(folderID: folder.id)
@@ -230,6 +210,98 @@ struct OverlayView: View {
             } else {
                 EmptyView()
                 }
+        }
+    }
+
+    private var backgroundView: some View {
+        VisualEffectBlur(material: .sidebar, blendingMode: .behindWindow)
+            .ignoresSafeArea()
+            .overlay(
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        NotificationCenter.default.post(name: .overlayHide, object: nil)
+                    }
+            )
+    }
+
+    private var searchBar: some View {
+        HStack {
+            Image(systemName: "magnifyingglass")
+                .foregroundColor(.secondary)
+            TextField("앱 검색", text: $searchText)
+                .textFieldStyle(.roundedBorder)
+                .frame(maxWidth: 520)
+                .focused($searchFocused)
+            Spacer()
+            Button("새 폴더") {
+                pendingAppIDForFolder = nil
+                newFolderName = ""
+                showingNewFolder = true
+            }
+            if catalog.isScanning {
+                ProgressView()
+                    .controlSize(.small)
+            }
+        }
+    }
+
+    private var launcherContent: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                launcherSections
+                    .padding(.horizontal, 40)
+                    .padding(.bottom, 40)
+            }
+            .onChange(of: scrollTarget) { _, target in
+                guard let target else { return }
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    proxy.scrollTo(target, anchor: .top)
+                }
+                scrollTarget = nil
+            }
+        }
+    }
+
+    private var launcherSections: some View {
+        VStack(alignment: .leading, spacing: 24) {
+            Color.clear
+                .frame(height: 1)
+                .id("top")
+
+            if !folders.folders.isEmpty {
+                FolderGrid(
+                    title: "폴더",
+                    folders: folders.folders,
+                    apps: visibleApps,
+                    draggingAppID: $draggingAppID,
+                    onSelect: { folderID in
+                        selectedFolderID = folderID
+                    },
+                    onDropApp: { appID, folderID in
+                        folders.addApp(appID: appID, to: folderID)
+                    }
+                )
+            }
+            if settings.config.showRecentApps {
+                AppSection(title: "최근 앱", apps: usage.recentApps(from: visibleApps))
+            }
+            if settings.config.showFrequentApps {
+                AppSection(title: "자주 쓰는 앱", apps: usage.frequentApps(from: visibleApps))
+            }
+            PagedAppGrid(
+                title: "전체 앱",
+                apps: filteredApps,
+                selectedAppID: focusedApp?.bundleID,
+                draggingAppID: $draggingAppID,
+                pageIndex: $pageIndex,
+                columnsPerPage: max(1, columnsPerRow),
+                pageSize: pageSize,
+                moveApp: { appID, targetID in
+                    layout.move(appID: appID, to: targetID)
+                }
+            )
+            .id("apps")
         }
     }
 

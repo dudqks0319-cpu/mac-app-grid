@@ -10,21 +10,26 @@ final class UsageStore: ObservableObject {
 
     private let countsKey = "MacAppGrid.launchCounts"
     private let lastKey = "MacAppGrid.lastLaunch"
+    private let fileURL = AppPaths.jsonFile(named: "usage.json")
 
     private init() {
-        if let counts = UserDefaults.standard.dictionary(forKey: countsKey) as? [String: Int] {
-            launchCounts = counts
-        }
-        if let last = UserDefaults.standard.dictionary(forKey: lastKey) as? [String: TimeInterval] {
-            lastLaunch = last
+        if let payload = JSONFileStore.load(UsagePayload.self, from: fileURL) {
+            launchCounts = payload.launchCounts
+            lastLaunch = payload.lastLaunch
+        } else {
+            if let counts = UserDefaults.standard.dictionary(forKey: countsKey) as? [String: Int] {
+                launchCounts = counts
+            }
+            if let last = UserDefaults.standard.dictionary(forKey: lastKey) as? [String: TimeInterval] {
+                lastLaunch = last
+            }
         }
     }
 
     func recordLaunch(bundleID: String) {
         launchCounts[bundleID, default: 0] += 1
         lastLaunch[bundleID] = Date().timeIntervalSince1970
-        UserDefaults.standard.set(launchCounts, forKey: countsKey)
-        UserDefaults.standard.set(lastLaunch, forKey: lastKey)
+        save()
     }
 
     func recentApps(from apps: [AppItem], limit: Int = 12) -> [AppItem] {
@@ -40,4 +45,16 @@ final class UsageStore: ObservableObject {
             .sorted { (launchCounts[$0.bundleID] ?? 0) > (launchCounts[$1.bundleID] ?? 0) }
         return Array(sorted.prefix(limit))
     }
+
+    private func save() {
+        JSONFileStore.save(
+            UsagePayload(launchCounts: launchCounts, lastLaunch: lastLaunch),
+            to: fileURL
+        )
+    }
+}
+
+private struct UsagePayload: Codable {
+    var launchCounts: [String: Int]
+    var lastLaunch: [String: TimeInterval]
 }
