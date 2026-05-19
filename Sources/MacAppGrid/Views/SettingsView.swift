@@ -70,6 +70,9 @@ struct SettingsView: View {
                     .font(.headline)
                 Text("현재 단축키: \(settings.config.hotKey.displayName)")
                     .foregroundColor(.secondary)
+                Text("기존 Launchpad 방식 보조 단축키: \(HotKeyConfig.launchpadStyle.displayName)")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
                 HStack {
                     Button(isRecordingHotKey ? "입력 대기 중…" : "단축키 변경") {
                         hotKeyInputMessage = nil

@@ -10,7 +10,8 @@ Current status: beta candidate for local testing, not yet notarized for public r
 - Shows app icons and names in a grid.
 - Searches apps by name.
 - Launches apps through `NSWorkspace`.
-- Opens from a menu bar icon and global hotkey.
+- Opens from a menu bar icon, configurable global hotkey, and Launchpad-style `Command + L` shortcut.
+- Uses larger default grid cells so the launcher fills the display more like Launchpad.
 - Supports basic folders and app ordering.
 - Includes a Settings window for launch behavior, icon size, hidden apps, refresh, and layout reset.
 - Supports login item toggling through `SMAppService`.

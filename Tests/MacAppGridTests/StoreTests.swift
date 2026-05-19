@@ -1,4 +1,5 @@
 import AppKit
+import Carbon
 import XCTest
 @testable import MacAppGrid
 
@@ -31,9 +32,16 @@ final class StoreTests: XCTestCase {
 
         XCTAssertFalse(decoded.closeAfterLaunchingApp)
         XCTAssertEqual(decoded.hotKey.displayName, "Option + Space")
+        XCTAssertEqual(decoded.iconSize, .large)
         XCTAssertTrue(decoded.hideFolderAppsInGrid)
         XCTAssertTrue(decoded.dragAppOntoAppCreatesFolder)
         XCTAssertEqual(decoded.hiddenAppIDs, ["com.example.hidden"])
+    }
+
+    func testLaunchpadStyleHotKeyUsesCommandL() {
+        XCTAssertEqual(HotKeyConfig.launchpadStyle.displayName, "Command + L")
+        XCTAssertEqual(HotKeyConfig.launchpadStyle.modifierFlags, UInt32(cmdKey))
+        XCTAssertEqual(HotKeyConfig.launchpadStyle.keyCode, UInt32(kVK_ANSI_L))
     }
 
     @MainActor

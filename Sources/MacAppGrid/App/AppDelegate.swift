@@ -8,7 +8,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var overlayWindow: NSWindow?
     private var overlayController: OverlayController?
     private var hotKeyManager: HotKeyManager?
+    private var launchpadStyleHotKeyManager: HotKeyManager?
     private var keyMonitor: Any?
+    private var globalKeyMonitor: Any?
     private let settings = SettingsStore.shared
     private var registeredHotKey = SettingsStore.shared.config.hotKey
 
@@ -24,7 +26,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let keyMonitor {
             NSEvent.removeMonitor(keyMonitor)
         }
+        if let globalKeyMonitor {
+            NSEvent.removeMonitor(globalKeyMonitor)
+        }
         hotKeyManager?.tearDown()
+        launchpadStyleHotKeyManager?.tearDown()
     }
 
     private func setupStatusItem() {
@@ -60,16 +66,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             return event
         }
+
+        globalKeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard event.keyCode == kVK_Escape else { return }
+            Task { @MainActor in
+                guard self?.overlayController?.isVisible == true else { return }
+                self?.hideOverlay()
+            }
+        }
     }
 
     private func setupHotKey() {
         registerHotKey()
+        registerLaunchpadStyleHotKeyIfNeeded()
     }
 
     private func registerHotKey() {
         hotKeyManager?.tearDown()
         let hotKey = settings.config.hotKey
-        hotKeyManager = HotKeyManager(modifierFlags: hotKey.modifierFlags, keyCode: hotKey.keyCode) { [weak self] in
+        hotKeyManager = HotKeyManager(modifierFlags: hotKey.modifierFlags, keyCode: hotKey.keyCode, hotKeyID: 1) { [weak self] in
             Task { @MainActor in
                 self?.toggleOverlay()
             }
@@ -81,6 +96,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             registeredHotKey = hotKey
             settings.reportHotKeyRegistrationSuccess()
+        }
+    }
+
+    private func registerLaunchpadStyleHotKeyIfNeeded() {
+        launchpadStyleHotKeyManager?.tearDown()
+        launchpadStyleHotKeyManager = nil
+
+        let legacyHotKey = HotKeyConfig.launchpadStyle
+        guard settings.config.hotKey != legacyHotKey else { return }
+
+        launchpadStyleHotKeyManager = HotKeyManager(
+            modifierFlags: legacyHotKey.modifierFlags,
+            keyCode: legacyHotKey.keyCode,
+            hotKeyID: 2
+        ) { [weak self] in
+            Task { @MainActor in
+                self?.toggleOverlay()
+            }
+        }
+
+        let status = launchpadStyleHotKeyManager?.register() ?? OSStatus(eventHotKeyExistsErr)
+        if status != noErr {
+            NSLog("MacAppGrid Command+L hotkey registration failed: \(status)")
+            launchpadStyleHotKeyManager?.tearDown()
+            launchpadStyleHotKeyManager = nil
         }
     }
 
@@ -106,6 +146,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func handleSettingsChanged() {
         updateStatusItemVisibility()
         registerHotKey()
+        registerLaunchpadStyleHotKeyIfNeeded()
     }
 
     @objc private func toggleOverlay() {

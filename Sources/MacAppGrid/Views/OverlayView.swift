@@ -21,14 +21,50 @@ struct OverlayView: View {
 
     private var columnsPerRow: Int {
         let width = NSScreen.main?.visibleFrame.width ?? NSScreen.main?.frame.width ?? 1200
-        let reservedSpacing: CGFloat = 140
-        let cellWidth: CGFloat = 88
-        let spacing: CGFloat = 16
-        return max(1, Int((width - reservedSpacing) / (cellWidth + spacing)))
+        let horizontalPadding: CGFloat = 80
+        let cellWidth = settings.config.iconSize.cellWidth
+        let spacing: CGFloat = 18
+        let usableWidth = max(cellWidth, width - horizontalPadding)
+        return max(1, Int((usableWidth + spacing) / (cellWidth + spacing)))
+    }
+
+    private var rowsPerPage: Int {
+        let height = NSScreen.main?.visibleFrame.height ?? NSScreen.main?.frame.height ?? 900
+        let reservedHeight: CGFloat = 230
+        let rowHeight = settings.config.iconSize.cellHeight + 22
+        let usableHeight = max(rowHeight, height - reservedHeight)
+        return max(3, Int(usableHeight / rowHeight))
+    }
+
+    private var gridSpacing: CGFloat {
+        18
     }
 
     private var pageSize: Int {
-        max(1, columnsPerRow * 6)
+        max(1, columnsPerRow * rowsPerPage)
+    }
+
+    private var recentApps: [AppItem] {
+        usage.recentApps(from: visibleApps)
+    }
+
+    private var frequentApps: [AppItem] {
+        usage.frequentApps(from: visibleApps)
+    }
+
+    private var closeButton: some View {
+        Button {
+            NotificationCenter.default.post(name: .overlayHide, object: nil)
+        } label: {
+            Image(systemName: "xmark.circle.fill")
+                .font(.system(size: 22, weight: .semibold))
+                .symbolRenderingMode(.hierarchical)
+        }
+        .buttonStyle(.plain)
+        .foregroundColor(.secondary)
+        .help("닫기")
+        .keyboardShortcut(.escape, modifiers: [])
+        .accessibilityLabel("MacAppGrid 닫기")
     }
 
     private var focusedApp: AppItem? {
@@ -249,7 +285,9 @@ struct OverlayView: View {
                 ProgressView()
                     .controlSize(.small)
             }
+            closeButton
         }
+        .padding(.horizontal, 40)
     }
 
     private var launcherContent: some View {
@@ -289,11 +327,11 @@ struct OverlayView: View {
                     }
                 )
             }
-            if settings.config.showRecentApps {
-                AppSection(title: "최근 앱", apps: usage.recentApps(from: visibleApps))
+            if settings.config.showRecentApps && !recentApps.isEmpty {
+                AppSection(title: "최근 앱", apps: recentApps)
             }
-            if settings.config.showFrequentApps {
-                AppSection(title: "자주 쓰는 앱", apps: usage.frequentApps(from: visibleApps))
+            if settings.config.showFrequentApps && !frequentApps.isEmpty {
+                AppSection(title: "자주 쓰는 앱", apps: frequentApps)
             }
             PagedAppGrid(
                 title: "전체 앱",
@@ -303,6 +341,7 @@ struct OverlayView: View {
                 pageIndex: $pageIndex,
                 columnsPerPage: max(1, columnsPerRow),
                 pageSize: pageSize,
+                gridSpacing: gridSpacing,
                 moveApp: { appID, targetID in
                     layout.move(appID: appID, to: targetID)
                 },

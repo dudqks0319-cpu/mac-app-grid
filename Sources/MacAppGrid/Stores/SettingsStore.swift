@@ -6,6 +6,7 @@ enum AppIconSize: String, Codable, CaseIterable, Identifiable {
     case small
     case medium
     case large
+    case extraLarge
 
     var id: String { rawValue }
 
@@ -14,30 +15,34 @@ enum AppIconSize: String, Codable, CaseIterable, Identifiable {
         case .small: return "작게"
         case .medium: return "보통"
         case .large: return "크게"
+        case .extraLarge: return "아주 크게"
         }
     }
 
     var iconDimension: CGFloat {
         switch self {
-        case .small: return 46
-        case .medium: return 56
-        case .large: return 68
+        case .small: return 54
+        case .medium: return 66
+        case .large: return 82
+        case .extraLarge: return 96
         }
     }
 
     var cellWidth: CGFloat {
         switch self {
-        case .small: return 68
-        case .medium: return 76
-        case .large: return 92
+        case .small: return 82
+        case .medium: return 98
+        case .large: return 120
+        case .extraLarge: return 140
         }
     }
 
     var cellHeight: CGFloat {
         switch self {
-        case .small: return 78
-        case .medium: return 88
-        case .large: return 104
+        case .small: return 96
+        case .medium: return 114
+        case .large: return 136
+        case .extraLarge: return 156
         }
     }
 }
@@ -46,7 +51,7 @@ struct SettingsConfig: Codable, Equatable {
     var closeAfterLaunchingApp: Bool = true
     var launchAtLogin: Bool = false
     var showMenuBarIcon: Bool = true
-    var iconSize: AppIconSize = .medium
+    var iconSize: AppIconSize = .large
     var showRecentApps: Bool = true
     var showFrequentApps: Bool = true
     var hideFolderAppsInGrid: Bool = true
@@ -61,7 +66,7 @@ struct SettingsConfig: Codable, Equatable {
         closeAfterLaunchingApp = try container.decodeIfPresent(Bool.self, forKey: .closeAfterLaunchingApp) ?? true
         launchAtLogin = try container.decodeIfPresent(Bool.self, forKey: .launchAtLogin) ?? false
         showMenuBarIcon = try container.decodeIfPresent(Bool.self, forKey: .showMenuBarIcon) ?? true
-        iconSize = try container.decodeIfPresent(AppIconSize.self, forKey: .iconSize) ?? .medium
+        iconSize = try container.decodeIfPresent(AppIconSize.self, forKey: .iconSize) ?? .large
         showRecentApps = try container.decodeIfPresent(Bool.self, forKey: .showRecentApps) ?? true
         showFrequentApps = try container.decodeIfPresent(Bool.self, forKey: .showFrequentApps) ?? true
         hideFolderAppsInGrid = try container.decodeIfPresent(Bool.self, forKey: .hideFolderAppsInGrid) ?? true
@@ -80,6 +85,12 @@ struct HotKeyConfig: Codable, Equatable {
         modifierFlags: UInt32(optionKey),
         keyCode: UInt32(kVK_Space),
         displayName: "Option + Space"
+    )
+
+    static let launchpadStyle = HotKeyConfig(
+        modifierFlags: UInt32(cmdKey),
+        keyCode: UInt32(kVK_ANSI_L),
+        displayName: "Command + L"
     )
 }
 

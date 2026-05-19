@@ -8,6 +8,7 @@ struct PagedAppGrid: View {
     @Binding var pageIndex: Int
     let columnsPerPage: Int
     let pageSize: Int
+    let gridSpacing: CGFloat
     let moveApp: (String, String?) -> Void
     let createFolder: (String, String) -> Void
     @EnvironmentObject private var settings: SettingsStore
@@ -30,7 +31,7 @@ struct PagedAppGrid: View {
                     .foregroundColor(.secondary)
             } else {
                 VStack(alignment: .leading, spacing: 12) {
-                    LazyVGrid(columns: columns, alignment: .leading, spacing: 16) {
+                    LazyVGrid(columns: columns, alignment: .leading, spacing: gridSpacing) {
                         ForEach(currentPageApps) { app in
                             AppIconCell(
                                 app: app,
@@ -84,7 +85,7 @@ struct PagedAppGrid: View {
                         .buttonStyle(.bordered)
                     }
                 }
-                .frame(minHeight: 320)
+                .frame(minHeight: 420)
             }
         }
         .onChange(of: pages.count) { _, newCount in
@@ -99,7 +100,7 @@ struct PagedAppGrid: View {
     }
 
     private var columns: [GridItem] {
-        Array(repeating: GridItem(.fixed(settings.config.iconSize.cellWidth), spacing: 16), count: columnsPerPage)
+        Array(repeating: GridItem(.fixed(settings.config.iconSize.cellWidth), spacing: gridSpacing), count: columnsPerPage)
     }
 
     private var safePageIndex: Int {
