@@ -5,6 +5,8 @@ import Carbon
 struct SettingsView: View {
     @EnvironmentObject private var settings: SettingsStore
     @State private var isRecordingHotKey = false
+    @State private var hotKeyInputMessage: String?
+    @State private var showMenuBarHideAlert = false
 
     var body: some View {
         TabView {
@@ -35,7 +37,21 @@ struct SettingsView: View {
     private var generalSettings: some View {
         Form {
             Toggle("앱 실행 후 런처 닫기", isOn: binding(\.closeAfterLaunchingApp))
-            Toggle("메뉴바 아이콘 표시", isOn: binding(\.showMenuBarIcon))
+            Toggle(
+                "메뉴바 아이콘 표시",
+                isOn: Binding(
+                    get: { settings.config.showMenuBarIcon },
+                    set: { value in
+                        if value {
+                            settings.config.showMenuBarIcon = true
+                        } else if settings.isHotKeyRegistered {
+                            showMenuBarHideAlert = true
+                        } else {
+                            settings.reportHotKeyInputMessage("단축키가 등록되지 않은 상태에서는 메뉴바 아이콘을 숨길 수 없습니다.")
+                        }
+                    }
+                )
+            )
             Toggle(
                 "로그인 시 자동 실행",
                 isOn: Binding(
@@ -56,9 +72,17 @@ struct SettingsView: View {
                     .foregroundColor(.secondary)
                 HStack {
                     Button(isRecordingHotKey ? "입력 대기 중…" : "단축키 변경") {
+                        hotKeyInputMessage = nil
                         isRecordingHotKey = true
                     }
+                    if isRecordingHotKey {
+                        Button("취소") {
+                            isRecordingHotKey = false
+                            hotKeyInputMessage = nil
+                        }
+                    }
                     Button("기본값 복원") {
+                        hotKeyInputMessage = nil
                         settings.restoreDefaultHotKey()
                     }
                 }
@@ -67,14 +91,42 @@ struct SettingsView: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
+                if let hotKeyInputMessage {
+                    Text(hotKeyInputMessage)
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                }
+                if let error = settings.hotKeyRegistrationError {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundColor(.red)
+                }
             }
             .background(
-                HotKeyRecorderView(isRecording: $isRecordingHotKey) { hotKey in
-                    settings.setHotKey(hotKey)
-                }
+                HotKeyRecorderView(
+                    isRecording: $isRecordingHotKey,
+                    onRecord: { hotKey in
+                        hotKeyInputMessage = nil
+                        settings.setHotKey(hotKey)
+                    },
+                    onCancel: {
+                        hotKeyInputMessage = nil
+                    },
+                    onMessage: { message in
+                        hotKeyInputMessage = message
+                    }
+                )
                 .frame(width: 1, height: 1)
                 .opacity(0.01)
             )
+        }
+        .alert("메뉴바 아이콘을 숨길까요?", isPresented: $showMenuBarHideAlert) {
+            Button("숨기기", role: .destructive) {
+                settings.config.showMenuBarIcon = false
+            }
+            Button("취소", role: .cancel) {}
+        } message: {
+            Text("메뉴바 아이콘을 숨기면 단축키로만 MacAppGrid를 열 수 있습니다. 단축키가 동작하지 않으면 앱을 다시 실행해 복구해야 할 수 있습니다.")
         }
     }
 
@@ -179,6 +231,8 @@ struct SettingsView: View {
 private struct HotKeyRecorderView: NSViewRepresentable {
     @Binding var isRecording: Bool
     let onRecord: (HotKeyConfig) -> Void
+    let onCancel: () -> Void
+    let onMessage: (String) -> Void
 
     func makeNSView(context: Context) -> RecorderNSView {
         let view = RecorderNSView()
@@ -190,6 +244,11 @@ private struct HotKeyRecorderView: NSViewRepresentable {
             onRecord(hotKey)
             isRecording = false
         }
+        nsView.onCancel = {
+            onCancel()
+            isRecording = false
+        }
+        nsView.onMessage = onMessage
         nsView.isRecording = isRecording
         if isRecording {
             DispatchQueue.main.async {
@@ -201,6 +260,8 @@ private struct HotKeyRecorderView: NSViewRepresentable {
     final class RecorderNSView: NSView {
         var isRecording = false
         var onRecord: ((HotKeyConfig) -> Void)?
+        var onCancel: (() -> Void)?
+        var onMessage: ((String) -> Void)?
 
         override var acceptsFirstResponder: Bool { true }
 
@@ -209,8 +270,16 @@ private struct HotKeyRecorderView: NSViewRepresentable {
                 super.keyDown(with: event)
                 return
             }
+            if event.keyCode == UInt16(kVK_Escape) {
+                onCancel?()
+                isRecording = false
+                return
+            }
             let modifierFlags = carbonModifierFlags(from: event.modifierFlags)
-            guard modifierFlags != 0 else { return }
+            guard modifierFlags != 0 else {
+                onMessage?("Command, Option, Control, Shift 중 하나 이상을 함께 눌러야 합니다.")
+                return
+            }
             onRecord?(
                 HotKeyConfig(
                     modifierFlags: modifierFlags,

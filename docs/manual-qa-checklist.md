@@ -1,0 +1,26 @@
+# Manual QA Checklist
+
+- [ ] First launch shows app list.
+- [ ] Second launch shows cached app list before refresh completes.
+- [ ] App search responds immediately.
+- [ ] App click launches the target app.
+- [ ] Enter launches the selected app.
+- [ ] Esc closes the launcher.
+- [ ] Background click closes the launcher.
+- [ ] App execution failure shows a user-visible error.
+- [ ] App-to-app drop creates a folder with both apps.
+- [ ] App-to-folder drop adds app to existing folder.
+- [ ] Folder rename persists after restart.
+- [ ] Folder internal order persists after restart.
+- [ ] Folder apps are hidden from the main grid in Launchpad mode.
+- [ ] Folder apps remain searchable.
+- [ ] Custom hotkey registration works.
+- [ ] Risky or failed hotkey registration shows a warning.
+- [ ] Default hotkey restore works.
+- [ ] Menu bar icon cannot be hidden when hotkey registration has failed.
+- [ ] Login item toggle works from an installed signed app.
+- [ ] App cache reset works.
+- [ ] Icon cache reset works.
+- [ ] Layout reset works.
+- [ ] Unsigned local DMG installs for local testing.
+- [ ] Signed/notarized DMG opens without Gatekeeper warnings.

@@ -53,6 +53,22 @@ struct SettingsConfig: Codable, Equatable {
     var dragAppOntoAppCreatesFolder: Bool = true
     var hotKey: HotKeyConfig = .default
     var hiddenAppIDs: [String] = []
+
+    init() {}
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        closeAfterLaunchingApp = try container.decodeIfPresent(Bool.self, forKey: .closeAfterLaunchingApp) ?? true
+        launchAtLogin = try container.decodeIfPresent(Bool.self, forKey: .launchAtLogin) ?? false
+        showMenuBarIcon = try container.decodeIfPresent(Bool.self, forKey: .showMenuBarIcon) ?? true
+        iconSize = try container.decodeIfPresent(AppIconSize.self, forKey: .iconSize) ?? .medium
+        showRecentApps = try container.decodeIfPresent(Bool.self, forKey: .showRecentApps) ?? true
+        showFrequentApps = try container.decodeIfPresent(Bool.self, forKey: .showFrequentApps) ?? true
+        hideFolderAppsInGrid = try container.decodeIfPresent(Bool.self, forKey: .hideFolderAppsInGrid) ?? true
+        dragAppOntoAppCreatesFolder = try container.decodeIfPresent(Bool.self, forKey: .dragAppOntoAppCreatesFolder) ?? true
+        hotKey = try container.decodeIfPresent(HotKeyConfig.self, forKey: .hotKey) ?? .default
+        hiddenAppIDs = try container.decodeIfPresent([String].self, forKey: .hiddenAppIDs) ?? []
+    }
 }
 
 struct HotKeyConfig: Codable, Equatable {
@@ -78,6 +94,8 @@ final class SettingsStore: ObservableObject {
         }
     }
     @Published private(set) var loginItemError: String?
+    @Published private(set) var hotKeyRegistrationError: String?
+    @Published private(set) var isHotKeyRegistered = true
 
     private let fileURL: URL
     private let syncsLoginItemState: Bool
@@ -125,14 +143,44 @@ final class SettingsStore: ObservableObject {
     }
 
     func setHotKey(_ hotKey: HotKeyConfig) {
+        hotKeyRegistrationError = knownConflictMessage(for: hotKey)
         config.hotKey = hotKey
     }
 
     func restoreDefaultHotKey() {
+        hotKeyRegistrationError = nil
         config.hotKey = .default
+    }
+
+    func reportHotKeyRegistrationSuccess() {
+        isHotKeyRegistered = true
+    }
+
+    func rejectHotKey(_ rejectedHotKey: HotKeyConfig, fallback: HotKeyConfig, status: OSStatus) {
+        isHotKeyRegistered = false
+        hotKeyRegistrationError = """
+        \(rejectedHotKey.displayName)은 등록되지 않았습니다. 다른 앱 또는 macOS 시스템 단축키와 충돌할 수 있습니다. 기존 단축키 \(fallback.displayName)로 되돌렸습니다. 오류 코드: \(status)
+        """
+        if config.hotKey != fallback {
+            config.hotKey = fallback
+        }
+    }
+
+    func reportHotKeyInputMessage(_ message: String?) {
+        hotKeyRegistrationError = message
     }
 
     private func save() {
         JSONFileStore.save(config, to: fileURL)
+    }
+
+    private func knownConflictMessage(for hotKey: HotKeyConfig) -> String? {
+        if hotKey.modifierFlags == UInt32(cmdKey), hotKey.keyCode == UInt32(kVK_Space) {
+            return "Command + Space는 Spotlight와 충돌할 수 있습니다."
+        }
+        if hotKey.modifierFlags == UInt32(controlKey), hotKey.keyCode == UInt32(kVK_Space) {
+            return "Control + Space는 입력 소스 전환과 충돌할 수 있습니다."
+        }
+        return nil
     }
 }

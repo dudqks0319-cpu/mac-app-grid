@@ -53,7 +53,11 @@ PLIST
 if [[ -n "${DEVELOPER_ID_APPLICATION:-}" ]]; then
   codesign --force --options runtime --timestamp --sign "$DEVELOPER_ID_APPLICATION" "$APP_BUNDLE"
   codesign --verify --deep --strict --verbose=2 "$APP_BUNDLE"
-  spctl --assess --type execute --verbose "$APP_BUNDLE" || true
+  if [[ "${STRICT_APP_ASSESSMENT:-0}" == "1" ]]; then
+    spctl --assess --type execute --verbose "$APP_BUNDLE"
+  else
+    spctl --assess --type execute --verbose "$APP_BUNDLE" || echo "App spctl assessment warning before notarization." >&2
+  fi
 else
   echo "Unsigned local test build: set DEVELOPER_ID_APPLICATION to sign the app." >&2
 fi

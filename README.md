@@ -1,8 +1,8 @@
 # MacAppGrid
 
-MacAppGrid is an alpha-stage standalone macOS app grid launcher. It is intended to provide a safe Launchpad-style workflow without modifying Apple Launchpad internals, requiring SIP changes, or using private APIs.
+MacAppGrid is a beta-candidate standalone macOS app grid launcher. It provides a safe Launchpad-style workflow without modifying Apple Launchpad internals, requiring SIP changes, or using private APIs.
 
-Current status: MVP candidate for local testing, not yet notarized for public release.
+Current status: beta candidate for local testing, not yet notarized for public release.
 
 ## What Works
 
@@ -63,6 +63,14 @@ NOTARYTOOL_PROFILE="your-notarytool-profile" \
 ./script/release_build.sh
 ```
 
+Signed release verification:
+
+```bash
+codesign --verify --deep --strict --verbose=2 release/MacAppGrid.app
+spctl --assess --type open --context context:primary-signature --verbose release/MacAppGrid-0.1.0-beta.1.dmg
+xcrun stapler validate release/MacAppGrid-0.1.0-beta.1.dmg
+```
+
 Runtime data is stored here:
 
 ```txt
@@ -94,6 +102,19 @@ rm -rf "$HOME/Library/Application Support/MacAppGrid"
 - If layout or folder state looks wrong, use layout reset.
 - If cached data appears corrupt, delete app/icon cache from Settings > Advanced.
 - If login item toggling fails, retry from a signed `.app` bundle in `/Applications`.
+- If the menu bar icon is hidden and the hotkey stops working, relaunch the app from Finder or Terminal. MacAppGrid forces the menu bar icon visible when hotkey registration fails.
+- If a custom hotkey does not register, restore the default Option + Space shortcut in Settings.
+
+## Beta Release Gate
+
+See:
+
+- [CHANGELOG.md](CHANGELOG.md)
+- [KNOWN_ISSUES.md](KNOWN_ISSUES.md)
+- [PRIVACY.md](PRIVACY.md)
+- [SECURITY.md](SECURITY.md)
+- [docs/beta-release-checklist.md](docs/beta-release-checklist.md)
+- [docs/manual-qa-checklist.md](docs/manual-qa-checklist.md)
 
 ## Requirements
 

@@ -12,6 +12,10 @@ permissions:
 jobs:
   build:
     runs-on: macos-15
+    env:
+      IS_TAG_RELEASE: ${{ startsWith(github.ref, 'refs/tags/v') }}
+      HAS_SIGNING_SECRETS: ${{ secrets.DEVELOPER_ID_CERTIFICATE_BASE64 != '' && secrets.DEVELOPER_ID_CERTIFICATE_PASSWORD != '' && secrets.DEVELOPER_ID_APPLICATION != '' && secrets.APPLE_API_KEY_ID != '' && secrets.APPLE_API_ISSUER_ID != '' && secrets.APPLE_API_KEY_P8 != '' }}
+      NOTARYTOOL_PROFILE: macappgrid-notary
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,7 +29,44 @@ jobs:
       - name: Xcode build
         run: xcodebuild -scheme MacAppGrid -destination 'platform=macOS' build
 
-      - name: Package DMG
+      - name: Configure Developer ID signing
+        if: env.IS_TAG_RELEASE == 'true' && env.HAS_SIGNING_SECRETS == 'true'
+        env:
+          DEVELOPER_ID_CERTIFICATE_BASE64: ${{ secrets.DEVELOPER_ID_CERTIFICATE_BASE64 }}
+          DEVELOPER_ID_CERTIFICATE_PASSWORD: ${{ secrets.DEVELOPER_ID_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD || github.run_id }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+        run: |
+          CERT_PATH="$RUNNER_TEMP/developer-id.p12"
+          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+          API_KEY_PATH="$RUNNER_TEMP/AuthKey_${APPLE_API_KEY_ID}.p8"
+
+          echo "$DEVELOPER_ID_CERTIFICATE_BASE64" | base64 -D > "$CERT_PATH"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" -P "$DEVELOPER_ID_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          printf '%s' "$APPLE_API_KEY_P8" > "$API_KEY_PATH"
+          xcrun notarytool store-credentials "$NOTARYTOOL_PROFILE" \
+            --key "$API_KEY_PATH" \
+            --key-id "$APPLE_API_KEY_ID" \
+            --issuer "$APPLE_API_ISSUER_ID"
+
+      - name: Package unsigned DMG
+        if: env.IS_TAG_RELEASE != 'true' || env.HAS_SIGNING_SECRETS != 'true'
+        run: ./script/release_build.sh
+
+      - name: Package signed and notarized DMG
+        if: env.IS_TAG_RELEASE == 'true' && env.HAS_SIGNING_SECRETS == 'true'
+        env:
+          DEVELOPER_ID_APPLICATION: ${{ secrets.DEVELOPER_ID_APPLICATION }}
+          NOTARYTOOL_PROFILE: macappgrid-notary
+          VERSION: ${{ github.ref_name }}
         run: ./script/release_build.sh
 
       - name: Upload DMG artifact

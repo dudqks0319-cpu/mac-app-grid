@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var hotKeyManager: HotKeyManager?
     private var keyMonitor: Any?
     private let settings = SettingsStore.shared
+    private var registeredHotKey = SettingsStore.shared.config.hotKey
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -76,6 +77,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let status = hotKeyManager?.register() ?? OSStatus(eventHotKeyExistsErr)
         if status != noErr {
             NSLog("MacAppGrid hotkey registration failed: \(status)")
+            settings.rejectHotKey(hotKey, fallback: registeredHotKey, status: status)
+        } else {
+            registeredHotKey = hotKey
+            settings.reportHotKeyRegistrationSuccess()
         }
     }
 
@@ -134,6 +139,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func updateStatusItemVisibility() {
         guard let statusItem else { return }
-        statusItem.isVisible = settings.config.showMenuBarIcon
+        statusItem.isVisible = settings.config.showMenuBarIcon || !settings.isHotKeyRegistered
     }
 }

@@ -45,23 +45,17 @@ struct OverlayView: View {
     }
 
     private var appsForCurrentMode: [AppItem] {
-        let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmed.isEmpty, settings.config.hideFolderAppsInGrid else {
-            return visibleApps
-        }
-        return visibleApps.filter { !folderAppIDs.contains($0.bundleID) }
+        AppVisibilityPolicy.appsForDisplay(
+            visibleApps: visibleApps,
+            folderAppIDs: folderAppIDs,
+            searchText: searchText,
+            hidesFolderAppsInGrid: settings.config.hideFolderAppsInGrid
+        )
     }
 
     private var filteredApps: [AppItem] {
         let ordered = layout.orderedApps(from: appsForCurrentMode)
-        let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty {
-            return ordered
-        }
-        return ordered.filter {
-            $0.name.localizedCaseInsensitiveContains(trimmed)
-                || $0.bundleID.localizedCaseInsensitiveContains(trimmed)
-        }
+        return ordered.filter { AppVisibilityPolicy.matchesSearch($0, searchText: searchText) }
     }
 
     var body: some View {
