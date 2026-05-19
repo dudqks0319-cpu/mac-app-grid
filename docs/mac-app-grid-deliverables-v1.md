@@ -3,7 +3,7 @@
 작성일: 2026-05-19  
 대상: macOS Launchpad형 독립 앱 런처 MVP  
 권장 제품명: `Mac App Grid` 또는 `AppBoard`  
-현재 로컬 초안 경로: `/Users/jyb-m3max/Desktop/codex/LaunchPadReborn`
+현재 로컬 경로: `/Users/jyb-m3max/Desktop/codex/LaunchPadReborn`
 
 ## 1. 전체 기술 설계서
 
@@ -91,7 +91,7 @@ MacAppGrid
    └─ Assets.xcassets
 ```
 
-현재 로컬 초안은 `Sources/LaunchPadReborn/LaunchPadReborn.swift` 한 파일에 대부분 구현이 들어 있다. MVP로 계속 개발하려면 먼저 위 구조로 분리하는 것이 필요하다.
+현재 로컬 구현은 `Sources/MacAppGrid` 아래의 App/Controllers/Models/Services/Stores/Views/Support 구조로 1차 분리되어 있다. 다음 리팩터링 단계에서는 각 저장소와 서비스의 책임을 더 좁히고 Settings, LoginItem, JSON persistence를 독립 모듈로 추가한다.
 
 ### 1.5 런타임 흐름
 
@@ -165,9 +165,9 @@ MVP는 JSON 파일을 권장한다. SQLite는 검색/동기화/대량 상태가 
 
 ### 1.9 현재 코드 상태와 즉시 수정할 갭
 
-현재 `LaunchPadReborn` Swift Package에는 초기 구현이 있으나, `swift build` 결과 빌드 실패 상태다.
+현재 `MacAppGrid` Swift Package는 SwiftPM과 Xcode scheme 기준으로 빌드 성공 상태다.
 
-주요 빌드 실패:
+이미 해결된 초기 빌드 실패:
 
 - Swift 6 actor isolation 오류: AppKit/SwiftUI 상태 접근에 `@MainActor` 경계가 부족하다.
 - `NSSwipeGestureRecognizer` 타입을 찾지 못한다. macOS AppKit에서는 다른 제스처 처리 방식으로 교체가 필요하다.
@@ -177,13 +177,13 @@ MVP는 JSON 파일을 권장한다. SQLite는 검색/동기화/대량 상태가 
 - 현재 단축키 기본값은 `Command + L`인데, 제품 요구사항은 `Option + Space`다.
 - `Package.swift`의 최소 지원 버전은 macOS 13으로 되어 있어, 요구사항의 macOS 14 이상과 맞지 않는다.
 
-즉시 권장 조치:
+다음 권장 조치:
 
-1. 제품명과 번들 명칭을 `MacAppGrid` 계열로 바꾼다.
-2. 단일 Swift 파일을 App/Models/Services/Views/Stores로 분리한다.
-3. `AppDelegate`, `OverlayController`, UI 이벤트 핸들러를 `@MainActor` 경계로 정리한다.
-4. macOS에서 사용 가능한 페이지/스크롤 UI로 교체한다.
-5. 단축키 서비스는 Carbon 기반 유지 또는 `KeyboardShortcuts` 같은 의존성 도입 여부를 별도 승인받는다. MVP는 새 의존성 없이 Carbon으로 시작한다.
+1. SettingsView와 SettingsStore를 추가한다.
+2. 로그인 시 자동 실행은 `SMAppService` 기반 `LoginItemService`로 분리한다.
+3. UserDefaults 중심 저장을 Application Support JSON 저장으로 이전한다.
+4. 앱 목록과 아이콘 캐시를 추가해 런처 열림 시간을 줄인다.
+5. 폴더/드래그 UX를 Launchpad식 동작에 가깝게 개선한다.
 
 ## 2. 화면 설계 초안
 
@@ -531,10 +531,10 @@ APPLIED CONTROLS
 
 ## 11. 다음 실행 순서
 
-1. `LaunchPadReborn`을 `MacAppGrid`로 제품/번들 네이밍 정리
-2. 빌드 실패 수정
-3. 단일 Swift 파일 구조 분리
-4. 앱 스캔/검색/실행만 먼저 완성
-5. 설정/정렬/폴더 순서로 MVP 확장
+1. SettingsView와 SettingsStore 구현
+2. LoginItemService 추가
+3. Application Support JSON 저장소 도입
+4. 앱 스캔/아이콘 캐시 추가
+5. 폴더/드래그 UX 개선
 6. 성능/에러 복구 테스트
 7. Developer ID/Notarization/DMG 배포 패킷 준비

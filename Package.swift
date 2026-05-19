@@ -3,13 +3,13 @@
 import PackageDescription
 
 let package = Package(
-    name: "LaunchPadReborn",
+    name: "MacAppGrid",
     platforms: [
         .macOS(.v14)
     ],
     targets: [
         .executableTarget(
-            name: "LaunchPadReborn"
+            name: "MacAppGrid"
         )
     ]
 )

@@ -2,8 +2,8 @@
 set -euo pipefail
 
 MODE="${1:-run}"
-APP_NAME="LaunchPadReborn"
-BUNDLE_ID="com.codex.LaunchPadReborn"
+APP_NAME="MacAppGrid"
+BUNDLE_ID="com.dudqks0319.MacAppGrid"
 MIN_SYSTEM_VERSION="14.0"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -74,4 +74,3 @@ case "$MODE" in
     exit 2
     ;;
 esac
-

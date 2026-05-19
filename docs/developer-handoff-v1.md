@@ -93,17 +93,18 @@ MVP 필수 기능:
 
 현재 로컬 상태:
 
-- `/Users/jyb-m3max/Desktop/codex/LaunchPadReborn`에 Swift Package 초안이 있다.
-- 현재 초안은 한 파일에 구현이 몰려 있어 구조 분리가 필요하다.
-- `swift build`는 현재 실패한다. 주요 원인은 Swift 6 actor isolation, macOS unavailable SwiftUI page style, `NSSwipeGestureRecognizer` 사용, HotKey 타입 불일치, `NSHostingController` rootView 타입 문제다.
+- `/Users/jyb-m3max/Desktop/codex/LaunchPadReborn`에 `MacAppGrid` Swift Package가 있다.
+- 앱 소스는 `Sources/MacAppGrid` 아래 App/Controllers/Models/Services/Stores/Views/Support 구조로 1차 분리되어 있다.
+- `swift build`, `script/build_and_run.sh --verify`, `xcodebuild -scheme MacAppGrid -destination 'platform=macOS' build`가 통과한다.
+- 아직 Settings, 로그인 시 자동 실행, 숨김 앱 관리, Application Support JSON 저장, 앱/아이콘 캐시, 배포 패키징은 미구현이다.
 
 먼저 할 일:
 
-1. 프로젝트/제품명을 `MacAppGrid` 계열로 정리한다.
-2. 빌드 실패를 수정한다.
-3. App/Models/Services/Views/Stores 구조로 분리한다.
-4. 앱 스캔 + 검색 + 실행을 먼저 완성한다.
-5. 그 다음 정렬, 폴더, 설정, 로그인 항목, 배포 패키징으로 확장한다.
+1. SettingsView와 SettingsStore를 구현한다.
+2. SMAppService 기반 LoginItemService를 추가한다.
+3. UserDefaults 저장을 Application Support JSON 저장으로 이전한다.
+4. 앱/아이콘 캐시를 추가한다.
+5. 폴더/드래그 UX와 배포 패키징으로 확장한다.
 
 ## 개발자 검수 체크리스트
 
@@ -143,4 +144,3 @@ SECURITY GATE
 - Apple Developer Documentation: `SMAppService`
 - Apple Developer Documentation: `Notarizing macOS software before distribution`
 - Apple Developer Documentation: `App Sandbox`
-
