@@ -6,21 +6,29 @@ final class FolderStore: ObservableObject {
     @Published private(set) var folders: [Folder] = []
 
     private let foldersKey = "MacAppGrid.folders"
-    private let fileURL = AppPaths.jsonFile(named: "folders.json")
+    private let fileURL: URL
 
-    init() {
+    init(fileURL: URL = AppPaths.jsonFile(named: "folders.json")) {
+        self.fileURL = fileURL
         load()
     }
 
-    func createFolder(name: String, initialAppID: String? = nil) {
+    @discardableResult
+    func createFolder(name: String, initialAppID: String? = nil) -> String? {
+        createFolder(name: name, initialAppIDs: initialAppID.map { [$0] } ?? [])
+    }
+
+    @discardableResult
+    func createFolder(name: String, initialAppIDs: [String]) -> String? {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+        guard !trimmed.isEmpty else { return nil }
         var folder = Folder(id: UUID().uuidString, name: trimmed, appIDs: [])
-        if let appID = initialAppID {
-            folder.appIDs = [appID]
+        for appID in initialAppIDs where !folder.appIDs.contains(appID) {
+            folder.appIDs.append(appID)
         }
         folders.append(folder)
         save()
+        return folder.id
     }
 
     func addApp(appID: String, to folderID: String) {
@@ -54,6 +62,10 @@ final class FolderStore: ObservableObject {
     func deleteFolder(folderID: String) {
         folders.removeAll { $0.id == folderID }
         save()
+    }
+
+    func appIDsInFolders() -> Set<String> {
+        Set(folders.flatMap(\.appIDs))
     }
 
     func renameFolder(folderID: String, newName: String) {

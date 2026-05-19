@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import Carbon
 
 enum AppIconSize: String, Codable, CaseIterable, Identifiable {
     case small
@@ -48,7 +49,22 @@ struct SettingsConfig: Codable, Equatable {
     var iconSize: AppIconSize = .medium
     var showRecentApps: Bool = true
     var showFrequentApps: Bool = true
+    var hideFolderAppsInGrid: Bool = true
+    var dragAppOntoAppCreatesFolder: Bool = true
+    var hotKey: HotKeyConfig = .default
     var hiddenAppIDs: [String] = []
+}
+
+struct HotKeyConfig: Codable, Equatable {
+    var modifierFlags: UInt32
+    var keyCode: UInt32
+    var displayName: String
+
+    static let `default` = HotKeyConfig(
+        modifierFlags: UInt32(optionKey),
+        keyCode: UInt32(kVK_Space),
+        displayName: "Option + Space"
+    )
 }
 
 @MainActor
@@ -63,11 +79,16 @@ final class SettingsStore: ObservableObject {
     }
     @Published private(set) var loginItemError: String?
 
-    private let fileURL = AppPaths.jsonFile(named: "settings.json")
+    private let fileURL: URL
+    private let syncsLoginItemState: Bool
 
-    private init() {
+    init(fileURL: URL = AppPaths.jsonFile(named: "settings.json"), syncLoginItemState: Bool = true) {
+        self.fileURL = fileURL
+        self.syncsLoginItemState = syncLoginItemState
         config = JSONFileStore.load(SettingsConfig.self, from: fileURL) ?? SettingsConfig()
-        config.launchAtLogin = LoginItemService.isEnabled
+        if syncLoginItemState {
+            config.launchAtLogin = LoginItemService.isEnabled
+        }
     }
 
     func isHidden(_ appID: String) -> Bool {
@@ -89,6 +110,10 @@ final class SettingsStore: ObservableObject {
     }
 
     func setLaunchAtLogin(_ enabled: Bool) {
+        guard syncsLoginItemState else {
+            config.launchAtLogin = enabled
+            return
+        }
         do {
             try LoginItemService.setEnabled(enabled)
             loginItemError = nil
@@ -97,6 +122,14 @@ final class SettingsStore: ObservableObject {
             loginItemError = error.localizedDescription
             config.launchAtLogin = LoginItemService.isEnabled
         }
+    }
+
+    func setHotKey(_ hotKey: HotKeyConfig) {
+        config.hotKey = hotKey
+    }
+
+    func restoreDefaultHotKey() {
+        config.hotKey = .default
     }
 
     private func save() {

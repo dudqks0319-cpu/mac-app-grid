@@ -52,8 +52,10 @@ PLIST
 
 if [[ -n "${DEVELOPER_ID_APPLICATION:-}" ]]; then
   codesign --force --options runtime --timestamp --sign "$DEVELOPER_ID_APPLICATION" "$APP_BUNDLE"
+  codesign --verify --deep --strict --verbose=2 "$APP_BUNDLE"
+  spctl --assess --type execute --verbose "$APP_BUNDLE" || true
 else
-  echo "Skipping codesign: set DEVELOPER_ID_APPLICATION to sign the app." >&2
+  echo "Unsigned local test build: set DEVELOPER_ID_APPLICATION to sign the app." >&2
 fi
 
 if [[ -f "$DMG_PATH" ]]; then
@@ -64,8 +66,10 @@ hdiutil create -volname "$APP_NAME" -srcfolder "$APP_BUNDLE" -ov -format UDZO "$
 if [[ -n "${NOTARYTOOL_PROFILE:-}" ]]; then
   xcrun notarytool submit "$DMG_PATH" --keychain-profile "$NOTARYTOOL_PROFILE" --wait
   xcrun stapler staple "$DMG_PATH"
+  xcrun stapler validate "$DMG_PATH"
+  spctl --assess --type open --context context:primary-signature --verbose "$DMG_PATH"
 else
-  echo "Skipping notarization: set NOTARYTOOL_PROFILE to submit with notarytool." >&2
+  echo "Unsigned/not-notarized local DMG: set NOTARYTOOL_PROFILE to submit with notarytool." >&2
 fi
 
 echo "$DMG_PATH"

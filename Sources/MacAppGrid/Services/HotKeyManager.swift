@@ -13,7 +13,8 @@ final class HotKeyManager {
         self.handler = handler
     }
 
-    func register() {
+    @discardableResult
+    func register() -> OSStatus {
         var eventSpec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
         let callback: EventHandlerUPP = { _, _, userData in
             guard let userData else { return noErr }
@@ -23,10 +24,16 @@ final class HotKeyManager {
         }
 
         let userData = UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque())
-        InstallEventHandler(GetEventDispatcherTarget(), callback, 1, &eventSpec, userData, &eventHandlerRef)
+        let handlerStatus = InstallEventHandler(GetEventDispatcherTarget(), callback, 1, &eventSpec, userData, &eventHandlerRef)
+        guard handlerStatus == noErr else { return handlerStatus }
 
-        let hotKeyID = EventHotKeyID(signature: OSType(0x4C505242), id: 1)
-        RegisterEventHotKey(keyCode, modifierFlags, hotKeyID, GetEventDispatcherTarget(), 0, &eventHotKeyRef)
+        let hotKeyID = EventHotKeyID(signature: OSType(0x4D414744), id: 1)
+        let registerStatus = RegisterEventHotKey(keyCode, modifierFlags, hotKeyID, GetEventDispatcherTarget(), 0, &eventHotKeyRef)
+        if registerStatus != noErr, let eventHandlerRef {
+            RemoveEventHandler(eventHandlerRef)
+            self.eventHandlerRef = nil
+        }
+        return registerStatus
     }
 
     func tearDown() {
@@ -38,4 +45,3 @@ final class HotKeyManager {
         }
     }
 }
-

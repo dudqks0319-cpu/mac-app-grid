@@ -40,8 +40,20 @@ struct OverlayView: View {
         catalog.apps.filter { !settings.isHidden($0.bundleID) }
     }
 
+    private var folderAppIDs: Set<String> {
+        folders.appIDsInFolders()
+    }
+
+    private var appsForCurrentMode: [AppItem] {
+        let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.isEmpty, settings.config.hideFolderAppsInGrid else {
+            return visibleApps
+        }
+        return visibleApps.filter { !folderAppIDs.contains($0.bundleID) }
+    }
+
     private var filteredApps: [AppItem] {
-        let ordered = layout.orderedApps(from: visibleApps)
+        let ordered = layout.orderedApps(from: appsForCurrentMode)
         let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty {
             return ordered
@@ -299,6 +311,9 @@ struct OverlayView: View {
                 pageSize: pageSize,
                 moveApp: { appID, targetID in
                     layout.move(appID: appID, to: targetID)
+                },
+                createFolder: { draggedAppID, targetAppID in
+                    createFolderFromDrop(draggedAppID: draggedAppID, targetAppID: targetAppID)
                 }
             )
             .id("apps")
@@ -345,5 +360,13 @@ struct OverlayView: View {
     private func openFocusedApp() {
         guard let app = focusedApp else { return }
         launch(app: app)
+    }
+
+    private func createFolderFromDrop(draggedAppID: String, targetAppID: String) {
+        guard draggedAppID != targetAppID else { return }
+        let appIDs = [targetAppID, draggedAppID]
+        if let folderID = folders.createFolder(name: "새 폴더", initialAppIDs: appIDs) {
+            selectedFolderID = folderID
+        }
     }
 }

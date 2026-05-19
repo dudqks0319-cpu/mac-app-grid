@@ -16,4 +16,8 @@ final class IconCache {
         icons[path] = icon
         return icon
     }
+
+    func clear() {
+        icons.removeAll()
+    }
 }

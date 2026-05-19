@@ -15,14 +15,16 @@ Current status: MVP candidate for local testing, not yet notarized for public re
 - Includes a Settings window for launch behavior, icon size, hidden apps, refresh, and layout reset.
 - Supports login item toggling through `SMAppService`.
 - Stores settings, layout, folders, usage, and app cache JSON under Application Support.
+- Supports Launchpad-style folder mode: apps inside folders can be hidden from the main grid while remaining searchable.
+- Supports app-to-app drag folder creation when that setting is enabled.
 - Tracks recent and frequent apps after successful launches.
 
 ## What Is Not Finished
 
-- Custom hotkey recording UI.
-- Full Launchpad-style drag-app-onto-app folder creation.
+- Polished hotkey conflict detection.
+- Full Launchpad-quality folder hover animation.
 - Apple Developer ID certificate-backed signing and notarization in this checkout.
-- GitHub Release upload automation.
+- Fully signed GitHub Release automation with Apple credentials.
 
 ## Build
 
@@ -66,6 +68,32 @@ Runtime data is stored here:
 ```txt
 ~/Library/Application Support/MacAppGrid/
 ```
+
+## Install
+
+For local testing, build the DMG and drag `MacAppGrid.app` into `/Applications`.
+
+```bash
+./script/release_build.sh
+open release/MacAppGrid-0.1.0.dmg
+```
+
+Unsigned local builds may show Gatekeeper warnings. Public distribution should use a Developer ID signed and notarized DMG.
+
+## Uninstall
+
+Quit MacAppGrid from the menu bar, remove the app from `/Applications`, then remove runtime data if you want a clean reset:
+
+```bash
+rm -rf "$HOME/Library/Application Support/MacAppGrid"
+```
+
+## Troubleshooting
+
+- If apps are missing, open Settings > Advanced and run app refresh.
+- If layout or folder state looks wrong, use layout reset.
+- If cached data appears corrupt, delete app/icon cache from Settings > Advanced.
+- If login item toggling fails, retry from a signed `.app` bundle in `/Applications`.
 
 ## Requirements
 

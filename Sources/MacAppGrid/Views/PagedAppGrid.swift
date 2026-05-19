@@ -9,6 +9,7 @@ struct PagedAppGrid: View {
     let columnsPerPage: Int
     let pageSize: Int
     let moveApp: (String, String?) -> Void
+    let createFolder: (String, String) -> Void
     @EnvironmentObject private var settings: SettingsStore
 
     private var pages: [[AppItem]] {
@@ -44,7 +45,9 @@ struct PagedAppGrid: View {
                                 delegate: AppDropDelegate(
                                     targetID: app.bundleID,
                                     draggingID: $draggingAppID,
-                                    moveApp: moveApp
+                                    moveApp: moveApp,
+                                    createFolder: createFolder,
+                                    createsFolderOnDrop: settings.config.dragAppOntoAppCreatesFolder
                                 )
                             )
                         }

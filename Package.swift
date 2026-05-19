@@ -10,6 +10,10 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "MacAppGrid"
+        ),
+        .testTarget(
+            name: "MacAppGridTests",
+            dependencies: ["MacAppGrid"]
         )
     ]
 )

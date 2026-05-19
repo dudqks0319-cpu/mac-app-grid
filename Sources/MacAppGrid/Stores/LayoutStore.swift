@@ -6,9 +6,12 @@ final class LayoutStore: ObservableObject {
     @Published private(set) var orderedIDs: [String] = []
 
     private let orderKey = "MacAppGrid.layoutOrder"
-    private let fileURL = AppPaths.jsonFile(named: "layout.json")
+    private let fileURL: URL
+    private let migratesUserDefaults: Bool
 
-    init() {
+    init(fileURL: URL = AppPaths.jsonFile(named: "layout.json"), migratesUserDefaults: Bool = true) {
+        self.fileURL = fileURL
+        self.migratesUserDefaults = migratesUserDefaults
         load()
     }
 
@@ -56,7 +59,7 @@ final class LayoutStore: ObservableObject {
             orderedIDs = payload.orderedIDs
             return
         }
-        if let array = UserDefaults.standard.array(forKey: orderKey) as? [String] {
+        if migratesUserDefaults, let array = UserDefaults.standard.array(forKey: orderKey) as? [String] {
             orderedIDs = array
         }
     }

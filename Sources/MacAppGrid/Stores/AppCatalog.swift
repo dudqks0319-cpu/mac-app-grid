@@ -36,6 +36,10 @@ final class AppCatalog: ObservableObject {
         JSONFileStore.save(records, to: cacheURL)
     }
 
+    static func clearCache() {
+        try? FileManager.default.removeItem(at: cacheURL)
+    }
+
     private static var cacheURL: URL {
         AppPaths.jsonFile(named: "apps-cache.json")
     }

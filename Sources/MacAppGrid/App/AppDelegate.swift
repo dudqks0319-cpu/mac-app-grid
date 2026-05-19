@@ -62,12 +62,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func setupHotKey() {
-        hotKeyManager = HotKeyManager(modifierFlags: UInt32(optionKey), keyCode: UInt32(kVK_Space)) { [weak self] in
+        registerHotKey()
+    }
+
+    private func registerHotKey() {
+        hotKeyManager?.tearDown()
+        let hotKey = settings.config.hotKey
+        hotKeyManager = HotKeyManager(modifierFlags: hotKey.modifierFlags, keyCode: hotKey.keyCode) { [weak self] in
             Task { @MainActor in
                 self?.toggleOverlay()
             }
         }
-        hotKeyManager?.register()
+        let status = hotKeyManager?.register() ?? OSStatus(eventHotKeyExistsErr)
+        if status != noErr {
+            NSLog("MacAppGrid hotkey registration failed: \(status)")
+        }
     }
 
     private func setupWorkspaceObservers() {
@@ -91,6 +100,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func handleSettingsChanged() {
         updateStatusItemVisibility()
+        registerHotKey()
     }
 
     @objc private func toggleOverlay() {
