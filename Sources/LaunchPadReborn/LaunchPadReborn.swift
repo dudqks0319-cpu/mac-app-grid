@@ -10,6 +10,7 @@ extension Notification.Name {
     static let overlaySelectionMove = Notification.Name("LaunchPadReborn.overlaySelectionMove")
     static let overlaySelectionActivate = Notification.Name("LaunchPadReborn.overlaySelectionActivate")
     static let overlaySelectionReset = Notification.Name("LaunchPadReborn.overlaySelectionReset")
+    static let appLaunchFailed = Notification.Name("LaunchPadReborn.appLaunchFailed")
 }
 
 @main
@@ -89,25 +90,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func setupWorkspaceObservers() {
-        NSWorkspace.shared.notificationCenter.addObserver(
-            self,
-            selector: #selector(handleAppLaunched(_:)),
-            name: NSWorkspace.didLaunchApplicationNotification,
-            object: nil
-        )
-
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(handleOverlayHide),
             name: .overlayHide,
             object: nil
         )
-    }
-
-    @objc private func handleAppLaunched(_ note: Notification) {
-        guard let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
-              let bundleID = app.bundleIdentifier else { return }
-        UsageStore.shared.recordLaunch(bundleID: bundleID)
     }
 
     @objc private func handleOverlayHide() {
@@ -500,12 +488,16 @@ final class UsageStore: ObservableObject {
     }
 
     func recentApps(from apps: [AppItem], limit: Int = 12) -> [AppItem] {
-        let sorted = apps.sorted { (lastLaunch[$0.bundleID] ?? 0) > (lastLaunch[$1.bundleID] ?? 0) }
+        let sorted = apps
+            .filter { (lastLaunch[$0.bundleID] ?? 0) > 0 }
+            .sorted { (lastLaunch[$0.bundleID] ?? 0) > (lastLaunch[$1.bundleID] ?? 0) }
         return Array(sorted.prefix(limit))
     }
 
     func frequentApps(from apps: [AppItem], limit: Int = 12) -> [AppItem] {
-        let sorted = apps.sorted { (launchCounts[$0.bundleID] ?? 0) > (launchCounts[$1.bundleID] ?? 0) }
+        let sorted = apps
+            .filter { (launchCounts[$0.bundleID] ?? 0) > 0 }
+            .sorted { (launchCounts[$0.bundleID] ?? 0) > (launchCounts[$1.bundleID] ?? 0) }
         return Array(sorted.prefix(limit))
     }
 }
@@ -525,6 +517,7 @@ struct OverlayView: View {
     @State private var pageIndex: Int = 0
     @State private var focusedAppIndex: Int = 0
     @State private var scrollTarget: String?
+    @State private var launchErrorMessage: String?
 
     private var columnsPerRow: Int {
         let width = NSScreen.main?.visibleFrame.width ?? NSScreen.main?.frame.width ?? 1200
@@ -559,7 +552,7 @@ struct OverlayView: View {
                     Color.clear
                         .contentShape(Rectangle())
                         .onTapGesture {
-                            NSApp.keyWindow?.orderOut(nil)
+                            NotificationCenter.default.post(name: .overlayHide, object: nil)
                         }
                 )
 
@@ -678,6 +671,26 @@ struct OverlayView: View {
         .onReceive(NotificationCenter.default.publisher(for: .overlayScrollTarget)) { note in
             guard let target = note.object as? String else { return }
             scrollTarget = target
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .appLaunchFailed)) { note in
+            launchErrorMessage = note.object as? String ?? "앱을 실행할 수 없습니다."
+        }
+        .alert(
+            "앱 실행 실패",
+            isPresented: Binding(
+                get: { launchErrorMessage != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        launchErrorMessage = nil
+                    }
+                }
+            )
+        ) {
+            Button("확인", role: .cancel) {
+                launchErrorMessage = nil
+            }
+        } message: {
+            Text(launchErrorMessage ?? "")
         }
         .sheet(isPresented: $showingNewFolder) {
             NewFolderSheet(
@@ -974,11 +987,30 @@ struct AppIconCell: View {
 
 @MainActor
 func launch(app: AppItem) {
-    UsageStore.shared.recordLaunch(bundleID: app.bundleID)
     let url = URL(fileURLWithPath: app.path)
+    guard FileManager.default.fileExists(atPath: app.path) else {
+        NotificationCenter.default.post(
+            name: .appLaunchFailed,
+            object: "\(app.name)을 찾을 수 없습니다. 앱 목록을 새로고침해 주세요."
+        )
+        return
+    }
+
     let config = NSWorkspace.OpenConfiguration()
-    NSWorkspace.shared.openApplication(at: url, configuration: config, completionHandler: nil)
-    NotificationCenter.default.post(name: .overlayHide, object: nil)
+    NSWorkspace.shared.openApplication(at: url, configuration: config) { _, error in
+        Task { @MainActor in
+            if let error {
+                NotificationCenter.default.post(
+                    name: .appLaunchFailed,
+                    object: "\(app.name)을 실행하지 못했습니다. \(error.localizedDescription)"
+                )
+                return
+            }
+
+            UsageStore.shared.recordLaunch(bundleID: app.bundleID)
+            NotificationCenter.default.post(name: .overlayHide, object: nil)
+        }
+    }
 }
 
 struct AppDropDelegate: DropDelegate {
