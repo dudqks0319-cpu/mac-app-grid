@@ -6,7 +6,9 @@ Security fixes target the latest `main` branch until the first tagged beta relea
 
 ## Reporting
 
-Open a GitHub issue with a clear reproduction path. Do not include sensitive app inventory, local paths, or private logs unless they are required and redacted.
+Open a GitHub issue with a clear reproduction path for non-sensitive reports. For sensitive vulnerabilities, use GitHub private vulnerability reporting if it is enabled for the repository, or contact the maintainer before public disclosure.
+
+Do not include sensitive app inventory, local paths, or private logs unless they are required and redacted.
 
 ## Security Boundaries
 
@@ -20,3 +22,5 @@ Open a GitHub issue with a clear reproduction path. Do not include sensitive app
 ## Release Security
 
 Public builds should be distributed as Developer ID signed and notarized DMGs. Unsigned DMGs are for local testing only.
+
+Tag releases are expected to fail if Developer ID signing or notarization credentials are missing. A public release should include both the DMG and a SHA256 checksum file.

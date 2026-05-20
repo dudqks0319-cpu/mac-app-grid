@@ -4,6 +4,8 @@ MacAppGrid is a beta-candidate standalone macOS app grid launcher. It provides a
 
 Current status: beta candidate for local testing, not yet notarized for public release.
 
+Recommended first release path: Developer ID signed and notarized DMG distribution outside the Mac App Store. A Mac App Store edition should be treated as a separate sandbox-safe review track.
+
 ## What Works
 
 - Scans common macOS application folders.
@@ -52,7 +54,7 @@ Default run:
 ## Release Package
 
 The release script builds a Release app bundle and creates a DMG under `release/`.
-Signing and notarization run only when the required local Apple credentials are configured.
+Signing and notarization run only when the required local Apple credentials are configured. The script always writes a SHA256 checksum next to the DMG.
 
 ```bash
 ./script/release_build.sh
@@ -61,6 +63,17 @@ Signing and notarization run only when the required local Apple credentials are 
 Optional signed/notarized build:
 
 ```bash
+VERSION="0.1.0-beta.1" \
+DEVELOPER_ID_APPLICATION="Developer ID Application: Your Name (TEAMID)" \
+NOTARYTOOL_PROFILE="your-notarytool-profile" \
+./script/release_build.sh
+```
+
+Strict public release build:
+
+```bash
+VERSION="0.1.0-beta.1" \
+REQUIRE_SIGNED_RELEASE=1 \
 DEVELOPER_ID_APPLICATION="Developer ID Application: Your Name (TEAMID)" \
 NOTARYTOOL_PROFILE="your-notarytool-profile" \
 ./script/release_build.sh
@@ -70,8 +83,10 @@ Signed release verification:
 
 ```bash
 codesign --verify --deep --strict --verbose=2 release/MacAppGrid.app
+spctl --assess --type execute --verbose release/MacAppGrid.app
 spctl --assess --type open --context context:primary-signature --verbose release/MacAppGrid-0.1.0-beta.1.dmg
 xcrun stapler validate release/MacAppGrid-0.1.0-beta.1.dmg
+shasum -a 256 -c release/MacAppGrid-0.1.0-beta.1.dmg.sha256
 ```
 
 Runtime data is stored here:
@@ -90,6 +105,12 @@ open release/MacAppGrid-0.1.0.dmg
 ```
 
 Unsigned local builds may show Gatekeeper warnings. Public distribution should use a Developer ID signed and notarized DMG.
+
+## Distribution Strategy
+
+MacAppGrid should ship publicly as a Developer ID signed and notarized DMG first. The app intentionally avoids private APIs, SIP changes, administrator privileges, and Apple Launchpad database modification, but it still uses app-folder scanning, a menu bar app, global hotkeys, login item integration, a fullscreen overlay, and best-effort trackpad gestures. Those features fit external Developer ID distribution better than a first-pass Mac App Store submission.
+
+Mac App Store submission should be evaluated later on a separate `appstore-sandbox` branch. That edition should enable App Sandbox, avoid "Launchpad restoration" marketing language, and provide a user-selected Applications folder fallback with security-scoped bookmarks if direct app scanning is restricted.
 
 ## Uninstall
 
@@ -116,6 +137,7 @@ See:
 - [KNOWN_ISSUES.md](KNOWN_ISSUES.md)
 - [PRIVACY.md](PRIVACY.md)
 - [SECURITY.md](SECURITY.md)
+- [docs/distribution-strategy.md](docs/distribution-strategy.md)
 - [docs/beta-release-checklist.md](docs/beta-release-checklist.md)
 - [docs/manual-qa-checklist.md](docs/manual-qa-checklist.md)
 

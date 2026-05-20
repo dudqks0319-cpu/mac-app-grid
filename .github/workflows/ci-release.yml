@@ -29,6 +29,13 @@ jobs:
       - name: Xcode build
         run: xcodebuild -scheme MacAppGrid -destination 'platform=macOS' build
 
+      - name: Require signing secrets for tag releases
+        if: env.IS_TAG_RELEASE == 'true' && env.HAS_SIGNING_SECRETS != 'true'
+        run: |
+          echo "Tag releases must be Developer ID signed and notarized."
+          echo "Configure DEVELOPER_ID_CERTIFICATE_BASE64, DEVELOPER_ID_CERTIFICATE_PASSWORD, DEVELOPER_ID_APPLICATION, APPLE_API_KEY_ID, APPLE_API_ISSUER_ID, and APPLE_API_KEY_P8."
+          exit 1
+
       - name: Configure Developer ID signing
         if: env.IS_TAG_RELEASE == 'true' && env.HAS_SIGNING_SECRETS == 'true'
         env:
@@ -67,17 +74,47 @@ jobs:
           DEVELOPER_ID_APPLICATION: ${{ secrets.DEVELOPER_ID_APPLICATION }}
           NOTARYTOOL_PROFILE: macappgrid-notary
           VERSION: ${{ github.ref_name }}
+          REQUIRE_SIGNED_RELEASE: "1"
         run: ./script/release_build.sh
 
-      - name: Upload DMG artifact
+      - name: Write release notes
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          {
+            echo "# MacAppGrid $GITHUB_REF_NAME"
+            echo
+            echo "This release was built by GitHub Actions as a Developer ID signed and notarized DMG."
+            echo
+            echo "## Verification"
+            echo
+            echo "- Swift build: passed"
+            echo "- Swift tests: passed"
+            echo "- Xcode macOS build: passed"
+            echo "- Developer ID signing: required"
+            echo "- Notarization and stapling: required"
+            echo
+            echo "## Assets"
+            echo
+            for artifact in release/*.dmg release/*.sha256; do
+              echo "- $(basename "$artifact")"
+            done
+            echo
+            echo "See README, PRIVACY, SECURITY, and KNOWN_ISSUES before installing beta builds."
+          } > release/release-notes.md
+
+      - name: Upload release artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: MacAppGrid-DMG
-          path: release/*.dmg
+          name: MacAppGrid-release-artifacts
+          path: |
+            release/*.dmg
+            release/*.sha256
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" release/*.dmg --generate-notes --title "$GITHUB_REF_NAME"
+          gh release create "$GITHUB_REF_NAME" release/*.dmg release/*.sha256 \
+            --notes-file release/release-notes.md \
+            --title "MacAppGrid $GITHUB_REF_NAME"
