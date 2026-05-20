@@ -145,7 +145,7 @@ See:
 
 - macOS 14 or later
 - Xcode command line tools
-- Swift 6.2 toolchain or compatible
+- Swift 6.1 toolchain or compatible
 
 ## Safety Boundaries
 
